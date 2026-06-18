@@ -1,0 +1,10 @@
+# 텍스트 파일은 저장소에서 LF 로 정규화 (Windows 개발 → Linux VM 배포 일관성)
+* text=auto eol=lf
+
+# 바이너리/데이터는 변환하지 않음
+*.pdf binary
+*.png binary
+*.jpg binary
+*.faiss binary
+*.bin binary
+*.safetensors binary

@@ -1,0 +1,35 @@
+# ===== Core RAG =====
+openai>=1.30.0
+chromadb>=0.5.0
+tiktoken>=0.7.0
+
+# ===== Document loading =====
+pypdf>=4.0.0          # PDF 파싱
+# 한글(HWP) 문서가 있다면 아래 중 하나를 추가로 사용:
+# olefile>=0.47       # .hwp (구버전 binary) 파싱 보조
+# python-docx>=1.1.0  # .docx
+
+# ===== API server =====
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+
+# ===== Config / data =====
+python-dotenv>=1.0.0
+pyyaml>=6.0
+pandas>=2.2.0
+
+# ===== Evaluation =====
+# rouge-score>=0.1.2
+# scikit-learn>=1.5.0
+
+# ===== Dev / test =====
+pytest>=8.0.0
+
+# ===== 2단계: HuggingFace 로컬 모델 (GCP VM + L4 GPU) =====
+# VM 에서만 설치하세요. CUDA 버전에 맞는 torch 를 먼저 설치할 것.
+# torch>=2.3.0
+# transformers>=4.43.0
+# sentence-transformers>=3.0.0
+# accelerate>=0.33.0
