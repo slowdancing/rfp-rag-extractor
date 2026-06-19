@@ -1,5 +1,7 @@
 """정제된 코퍼스 생성 (청킹 직전 단계).
 
+두번째 처리
+
 흐름:
   1. data_list.csv 로드
   2. 각 문서의 본문 텍스트 확보
@@ -20,7 +22,7 @@ import pandas as pd
 from .clean import clean_text
 from .text_extract import extract_text
 
-# 코퍼스에 유지할 메타데이터 컬럼 (추후 필터링/출처표시에 사용)
+# 코퍼스에 유지할 메타데이터 컬럼 (추후 필터링/출처표시에 사용) - 결과분석에 사용 가능
 _META_COLS = [
     "사업명",
     "발주 기관",
@@ -32,6 +34,7 @@ _META_COLS = [
 ]
 
 
+# 원본 메타데이터를 받아서 짧은 데이터면 보강, 이후 정제하여 csv파일로 저장
 def build_corpus(
     csv_path: str | Path = "data/metadata/data_list.csv",
     raw_dir: str | Path = "data/raw",
@@ -45,7 +48,7 @@ def build_corpus(
         csv_path: 원본 메타데이터 CSV 경로
         raw_dir: 원본 문서 폴더
         out_path: 결과 저장 경로
-        min_length: 이 길이 미만이면 원본에서 텍스트 재추출(보강) 시도
+        min_length: 이 길이 미만이면 원본에서 텍스트 재추출(보강) 시도 (기준)
         verbose: 진행 로그 출력 여부
 
     Returns:
@@ -57,7 +60,7 @@ def build_corpus(
     records = []
     augmented = 0
     failed = []
-    for _, row in df.iterrows():
+    for _, row in df.iterrows():  # 데이터의 한 행을 받아옴
         filename = str(row["파일명"])
         doc_id = Path(filename).stem
         text = str(row["텍스트"]) if pd.notna(row["텍스트"]) else ""

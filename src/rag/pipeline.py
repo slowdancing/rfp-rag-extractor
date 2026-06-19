@@ -63,6 +63,48 @@ class RAGPipeline:
             print(f"[index] {doc.doc_id}: {len(chunks)} chunks")
         return total
 
+    def index_chunks(
+        self,
+        csv_path: str,
+        batch_size: int = 100,
+        verbose: bool = True,
+    ) -> int:
+        """이미 청킹된 chunks.csv 를 임베딩하여 벡터스토어에 적재. 청크 수 반환.
+
+        dataset_utill.build_chunks 산출물(chunks.csv)을 입력으로 받는다.
+        'text' 컬럼은 본문, 나머지 컬럼은 메타데이터로 저장한다.
+        """
+        import pandas as pd
+
+        df = pd.read_csv(csv_path)
+        meta_cols = [c for c in df.columns if c != "text"]
+
+        def _sanitize(value):
+            # ChromaDB 메타데이터는 str/int/float/bool 만 허용 (None/NaN 불가)
+            if pd.isna(value):
+                return ""
+            if isinstance(value, (int, float, bool, str)):
+                return value
+            return str(value)
+
+        total = 0
+        for start in range(0, len(df), batch_size):
+            batch = df.iloc[start : start + batch_size]
+            texts = batch["text"].astype(str).tolist()
+            ids = batch["chunk_id"].astype(str).tolist()
+            metadatas = [
+                {col: _sanitize(row[col]) for col in meta_cols}
+                for _, row in batch.iterrows()
+            ]
+            embeddings = self._embedder.embed_documents(texts)
+            self._store.add(
+                ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas
+            )
+            total += len(batch)
+            if verbose:
+                print(f"[index] {total}/{len(df)} 청크 적재 완료")
+        return total
+
     # ---------- 검색 ----------
     def retrieve(
         self, query: str, top_k: int | None = None, where: dict | None = None

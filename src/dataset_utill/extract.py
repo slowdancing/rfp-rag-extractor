@@ -1,5 +1,7 @@
 """데이터셋 zip 압축 해제 유틸.
 
+데이터셋을 다운로드 받고 가장 처음 실행되는 함수가 정의되어있다.
+
 `dataset.zip` 같은 배포 압축파일에서 문서(HWP/PDF)와 메타데이터(CSV/XLSX)를
 구분해 `data/` 하위 폴더로 정리한다.
 
@@ -69,11 +71,13 @@ def extract_dataset(
 
     # 실제 zipfile에서 데이터를 읽어오는 과정
     with zipfile.ZipFile(zip_path) as zf:
+        # 파일 내부의 모든 항목의 정보 목록을 리턴 -> 다 zip파일 내부를 다 훑는거
         for info in zf.infolist():
+            # info가 폴더라면 건너뛰기
             if info.is_dir():
                 continue
             name = _decode_name(info)  # 이름을 추출
-            ext = Path(name).suffix.lower()  # 확장자를 추출
+            ext = Path(name).suffix.lower()  # 확장자를 추출(. 포함)
 
             if ext in DOC_EXTS:  # 확장자가 .hwp / .pdf 일 경우 
                 dest_dir = raw_dir
