@@ -9,7 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.embeddings.base import BaseEmbedder
-from src.ingestion import chunk_document, load_documents
+from src.dataset_utill.chunker import chunk_document
+from src.dataset_utill.loader import load_documents
 from src.llm.base import BaseLLM
 from src.rag import prompts
 from src.vectorstore.base import BaseVectorStore, RetrievedChunk
@@ -112,6 +113,20 @@ class RAGPipeline:
         q_emb = self._embedder.embed_query(query)
         return self._store.query(q_emb, top_k or self._top_k, where=where)
 
+    def rewrite_query(self, question: str) -> str:
+        """자연어 질문을 검색용 핵심 키워드 질의로 변환한다(LLM 사용).
+
+        실패하거나 빈 결과면 원 질문을 그대로 반환한다.
+        """
+        try:
+            rewritten = self._llm.generate(
+                prompts.QUERY_REWRITE_SYSTEM_PROMPT,
+                prompts.build_query_rewrite_prompt(question),
+            ).strip()
+            return rewritten or question
+        except Exception:  # noqa: BLE001 - 재작성 실패 시 원 질문으로 폴백
+            return question
+
     @staticmethod
     def _format_context(chunks: list[RetrievedChunk]) -> str:
         parts = []
@@ -122,9 +137,15 @@ class RAGPipeline:
 
     # ---------- 질의응답 ----------
     def ask(
-        self, question: str, top_k: int | None = None, where: dict | None = None
+        self,
+        question: str,
+        top_k: int | None = None,
+        where: dict | None = None,
+        rewrite: bool = True,
     ) -> RAGAnswer:
-        chunks = self.retrieve(question, top_k, where)
+        # 검색은 재작성된 질의로, 답변 생성은 원 질문으로 수행한다.
+        search_query = self.rewrite_query(question) if rewrite else question
+        chunks = self.retrieve(search_query, top_k, where)
         context = self._format_context(chunks)
         answer = self._llm.generate(
             prompts.QA_SYSTEM_PROMPT,

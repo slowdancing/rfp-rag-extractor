@@ -27,8 +27,7 @@
 rfp-rag-extractor/
 ├── src/
 │   ├── config.py            # .env 기반 중앙 설정
-│   ├── dataset_utill/       # ★ 데이터 준비 파이프라인 (완성)
-│   ├── ingestion/           # 청킹·로더 (저수준 유틸)
+│   ├── dataset_utill/       # ★ 데이터 준비 파이프라인 (추출·정제·청킹·로더)
 │   ├── embeddings/          # 임베딩 추상화 + OpenAI/HF 구현
 │   ├── vectorstore/         # 벡터스토어 추상화 + Chroma 구현
 │   ├── llm/                 # 생성 LLM 추상화 + OpenAI/HF 구현
@@ -58,6 +57,8 @@ rfp-rag-extractor/
 | `clean.py` | `clean_text(text, remove_artifacts=True)` | 줄바꿈 통일, `<표>/<그림>` 제거, 공백·빈줄 축소 등 **정제** |
 | `preprocess.py` | `build_corpus(csv_path, raw_dir, out_path, min_length=1000)` | CSV 로드 → `min_length` 미만 문서는 원본 재추출로 **보강** → 정제 → `corpus_clean.csv` 저장 |
 | `chunk_corpus.py` | `build_chunks(corpus_path, out_path, chunk_size=1000, chunk_overlap=150)` | 정제 코퍼스를 **토큰 청킹** → 청크별 메타데이터 부착 → `chunks.csv` 저장 |
+| `chunker.py` | `chunk_document(doc_id, text, metadata, chunk_size, overlap)` | 토큰 기준 슬라이딩 윈도우 청킹 (`chunk_corpus` 가 재사용) |
+| `loader.py` | `load_documents(raw_dir, metadata_dir)` | 파일 직접 파싱 로더 (현재 파이프라인은 CSV 기반이라 미사용) |
 
 **사용법 (데이터 준비 전체 흐름):**
 
@@ -87,13 +88,6 @@ python -m src.dataset_utill.chunk_corpus
 from src.config import get_settings
 settings = get_settings()      # settings.openai_api_key, settings.top_k ...
 ```
-
-### `src/ingestion/` — 청킹·로더 (저수준 유틸)
-
-| 파일 | 함수/클래스 | 기능 |
-|------|------|------|
-| `chunker.py` | `chunk_document(doc_id, text, metadata, chunk_size, overlap)` | 토큰 기준 슬라이딩 윈도우 청킹. `Chunk` 리스트 반환 (`dataset_utill.chunk_corpus` 가 재사용) |
-| `loader.py` | `load_documents(raw_dir, metadata_dir)` | 파일 직접 파싱 방식 로더 (현재 파이프라인은 CSV 기반이라 미사용) |
 
 ### `src/embeddings/` — 임베딩 (텍스트 → 벡터)
 

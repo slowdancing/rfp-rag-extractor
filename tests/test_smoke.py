@@ -4,7 +4,7 @@
 """
 from __future__ import annotations
 
-from src.ingestion.chunker import chunk_document
+from src.dataset_utill.chunker import chunk_document
 
 
 def test_chunk_short_document_single_chunk():

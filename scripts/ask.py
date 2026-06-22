@@ -1,4 +1,5 @@
 """CLI 질의 스크립트 (빠른 동작 확인용).
+파이썬 파일을 실행해서 질문
 
 실행:  python -m scripts.ask "이 사업의 예산은 얼마인가요?"
 """
@@ -21,7 +22,8 @@ def main() -> None:
     print(ans.answer)
     print("\n=== 출처 ===")
     for c in ans.sources:
-        print(f"- {c.metadata.get('source')} (score={c.score:.3f})")
+        name = c.metadata.get("사업명") or c.metadata.get("doc_id") or "?"
+        print(f"- {name[:45]} (유사도={c.score:.3f})")
 
 
 if __name__ == "__main__":

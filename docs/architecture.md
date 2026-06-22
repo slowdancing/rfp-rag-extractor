@@ -32,7 +32,7 @@ data/metadata/*.json ─┘                   (배치 임베딩)        │
 ## 컴포넌트
 
 - `src/config.py` — `.env`/환경변수 기반 설정 (pydantic-settings)
-- `src/ingestion/` — RFP 문서 로딩(PDF/TXT) + 메타데이터 매핑 + 토큰 청킹
+- `src/dataset_utill/` — zip 추출 + 원본 재추출(HWP/PDF) + 정제 + 토큰 청킹 + 로더
 - `src/embeddings/` — 임베딩 추상화 + OpenAI/HF 구현 + 팩토리
 - `src/llm/` — 생성 LLM 추상화 + OpenAI/HF 구현 + 팩토리
 - `src/vectorstore/` — 벡터 저장소 추상화 + Chroma 구현 + 팩토리

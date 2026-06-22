@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_llm_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
+    # None 이면 temperature 미전송(모델 기본값). gpt-5 계열은 1만 허용하므로 기본 None.
+    openai_temperature: float | None = None
 
     # HuggingFace (2단계)
     hf_llm_model: str = "Qwen/Qwen2.5-7B-Instruct"

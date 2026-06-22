@@ -6,7 +6,7 @@
   3. 청크마다 문서 메타데이터(doc_id, 사업명, 기관 ...)를 부착
   4. data/processed/chunks.csv 로 저장
 
-토큰 청킹 로직은 src/ingestion/chunker.py 의 chunk_document 를 재사용한다.
+토큰 청킹 로직은 같은 패키지의 chunker.py(chunk_document)를 재사용한다.
 
 CLI:
     python -m src.dataset_utill.chunk_corpus
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.ingestion.chunker import chunk_document
+from .chunker import chunk_document
 
 # 각 청크에 부착할 메타데이터 컬럼 (검색 결과 필터링/출처표시에 사용)
 _META_COLS = [
