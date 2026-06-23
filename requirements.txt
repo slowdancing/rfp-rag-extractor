@@ -2,6 +2,7 @@
 openai>=1.30.0
 chromadb>=0.5.0
 tiktoken>=0.7.0
+rank_bm25>=0.2.2      # 하이브리드 검색(BM25 키워드)
 
 # ===== Document loading =====
 pypdf>=4.0.0          # PDF 파싱

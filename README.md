@@ -14,7 +14,7 @@
 | 데이터 추출·정제·청킹 파이프라인 (`src/dataset_utill`) | ✅ 완료·검증됨 |
 | 임베딩 & 벡터 적재 (1,107 청크 → ChromaDB) | ✅ 완료 (OpenAI) |
 | 질의응답 (검색→LLM→답변) + 질의 재작성 | ✅ 동작 |
-| 검색 품질 개선 (하이브리드 검색 등) | 🟡 진행중 |
+| 하이브리드 검색 (BM25 + dense, RRF) | ✅ 적용·검증 |
 | 평가 체계 | 🟡 골격 |
 | GCP VM + HuggingFace (2단계) | ⬜ 예정 |
 
@@ -122,11 +122,13 @@ settings = get_settings()      # settings.openai_api_key, settings.top_k ...
 | 파일 | 함수/클래스 | 기능 |
 |------|------|------|
 | `pipeline.py` | `RAGPipeline` | 인덱싱·검색·질의·요약을 묶는 핵심 클래스 |
-| | `RAGPipeline.index_corpus(...)` | 문서 청킹→임베딩→저장 |
-| | `RAGPipeline.ask(question, top_k, where)` | 검색→프롬프트→생성. `RAGAnswer`(답변+출처) 반환 |
+| | `RAGPipeline.index_chunks(csv)` | chunks.csv 임베딩→벡터스토어 적재 |
+| | `RAGPipeline.rewrite_query(q)` | 자연어 질문→검색용 키워드 변환(LLM) |
+| | `RAGPipeline.ask(question, top_k, where, rewrite)` | (재작성→)검색→프롬프트→생성. `RAGAnswer` 반환 |
 | | `RAGPipeline.summarize(doc_id)` | 특정 문서 표준 항목 요약 |
 | | `build_pipeline(settings)` | 설정으로 완성된 파이프라인 생성 |
-| `prompts.py` | `build_qa_user_prompt`, `build_summary_user_prompt` | RFP 특화 프롬프트 구성 |
+| `hybrid.py` | `HybridRetriever` | BM25(문자 바이그램) + dense 를 RRF로 융합한 하이브리드 검색 |
+| `prompts.py` | `build_qa_user_prompt`, `QUERY_REWRITE_SYSTEM_PROMPT` 등 | RFP 특화 프롬프트 |
 
 ### `src/api/` — FastAPI 서비스
 

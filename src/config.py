@@ -43,6 +43,8 @@ class Settings(BaseSettings):
 
     # Retrieval
     top_k: int = 5
+    retrieval_mode: str = "hybrid"   # "dense" | "hybrid"
+    chunks_path: str = "data/processed/chunks.csv"
 
     # Paths
     data_raw_dir: str = "./data/raw"

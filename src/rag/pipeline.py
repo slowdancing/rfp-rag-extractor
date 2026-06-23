@@ -29,11 +29,14 @@ class RAGPipeline:
         vector_store: BaseVectorStore,
         llm: BaseLLM,
         top_k: int = 5,
+        hybrid_retriever=None,
     ):
         self._embedder = embedder
         self._store = vector_store
         self._llm = llm
         self._top_k = top_k
+        # 설정 시 dense 대신 하이브리드(BM25+dense) 검색 사용
+        self._hybrid = hybrid_retriever
 
     # ---------- 인덱싱 ----------
     def index_corpus(
@@ -110,8 +113,10 @@ class RAGPipeline:
     def retrieve(
         self, query: str, top_k: int | None = None, where: dict | None = None
     ) -> list[RetrievedChunk]:
-        q_emb = self._embedder.embed_query(query)
-        return self._store.query(q_emb, top_k or self._top_k, where=where)
+        k = top_k or self._top_k
+        if self._hybrid is not None:
+            return self._hybrid.retrieve(query, top_k=k, where=where)
+        return self._store.query(self._embedder.embed_query(query), k, where=where)
 
     def rewrite_query(self, question: str) -> str:
         """자연어 질문을 검색용 핵심 키워드 질의로 변환한다(LLM 사용).
@@ -175,9 +180,19 @@ def build_pipeline(settings) -> RAGPipeline:
     from src.llm import build_llm
     from src.vectorstore import build_vector_store
 
+    embedder = build_embedder(settings)
+    store = build_vector_store(settings)
+
+    hybrid = None
+    if settings.retrieval_mode.lower() == "hybrid":
+        from src.rag.hybrid import HybridRetriever
+
+        hybrid = HybridRetriever(embedder, store, chunks_csv=settings.chunks_path)
+
     return RAGPipeline(
-        embedder=build_embedder(settings),
-        vector_store=build_vector_store(settings),
+        embedder=embedder,
+        vector_store=store,
         llm=build_llm(settings),
         top_k=settings.top_k,
+        hybrid_retriever=hybrid,
     )
