@@ -13,6 +13,8 @@ import re
 
 # HWP 추출 placeholder (표/그림/개체 등) — 의미 없는 구조 표시자
 _ARTIFACT = re.compile(r"<\s*(표|그림|개체|수식|차트)\s*>")
+# 사설영역(PUA) 기호 글꼴 문자 + 대체문자(U+FFFD) — HWP 커스텀 불릿 등, 표준 의미 없음
+_PUA = re.compile("[-�]")
 # 연속 공백/탭/비단절공백
 _INLINE_WS = re.compile(r"[ \t 　]+")
 # 3줄 이상 연속 빈 줄
@@ -35,9 +37,10 @@ def clean_text(text: str | None, remove_artifacts: bool = True) -> str:
     # 1) 줄바꿈 통일
     text = text.replace("\r\n", "\n").replace("\r", "\n")
 
-    # 2) HWP 구조 표시자 제거
+    # 2) HWP 구조 표시자 + 사설영역(PUA) 기호 문자 제거
     if remove_artifacts:
         text = _ARTIFACT.sub("", text)
+    text = _PUA.sub(" ", text)  # 불릿 자리이므로 공백으로 (이후 공백 정리됨)
 
     # 3) 줄 단위 정리: 줄 내부 다중 공백 축소 + 양끝 공백 제거
     lines = (_INLINE_WS.sub(" ", line).strip() for line in text.split("\n"))

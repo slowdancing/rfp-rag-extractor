@@ -29,7 +29,7 @@ _META_COLS = [
     "파일형식",
 ]
 
-
+# 정제된 코퍼스를 가지고 청크를 만드는 함수
 def build_chunks(
     corpus_path: str | Path = "data/processed/corpus_clean.csv",
     out_path: str | Path = "data/processed/chunks.csv",
@@ -49,20 +49,24 @@ def build_chunks(
     Returns:
         컬럼: chunk_id, doc_id, chunk_index, text, (메타데이터)
     """
+
+    # corpus 경로와 output 경로를 각각 변수에 저장 후 df 변수로 corpus에 접근하도록 설정
     corpus_path, out_path = Path(corpus_path), Path(out_path)
     df = pd.read_csv(corpus_path)
 
     rows = []
     skipped = 0
-    for _, r in df.iterrows():
+    for _, r in df.iterrows():  # df의 인덱스, 한 행 가져오기
+        # doc_id에 csv파일 컬럼들, text에는 text컬럼에 해당하는 내용을 가져옴 없다면 ""로 채움
         doc_id = str(r["doc_id"])
         text = str(r["text"]) if pd.notna(r["text"]) else ""
+        # 텍스트가 존재하는지 확인 여부 코드
         if not text.strip():
             skipped += 1
             continue
 
         metadata = {"doc_id": doc_id}
-        metadata.update({col: r.get(col) for col in _META_COLS})
+        metadata.update({col: r.get(col) for col in _META_COLS})  # ??몰루겠음
 
         for chunk in chunk_document(doc_id, text, metadata, chunk_size, chunk_overlap):
             row = {
@@ -90,7 +94,11 @@ def build_chunks(
 
 
 def main() -> None:
-    build_chunks()
+    # .env/설정의 청킹 단위를 사용 (CHUNK_SIZE, CHUNK_OVERLAP)
+    from src.config import get_settings
+
+    s = get_settings()
+    build_chunks(chunk_size=s.chunk_size, chunk_overlap=s.chunk_overlap)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,7 @@
 """데이터셋 zip 압축 해제 유틸.
 
-데이터셋을 다운로드 받고 가장 처음 실행되는 함수가 정의되어있다.
-
 `dataset.zip` 같은 배포 압축파일에서 문서(HWP/PDF)와 메타데이터(CSV/XLSX)를
-구분해 `data/` 하위 폴더로 정리한다.
+구분해 `data/` 하위 폴더로 정리한다. -> 폴더 정리 함수
 
 CLI 사용:
     python -m src.dataset_utill.extract "C:/Users/PC/Downloads/다운로드받은 데이터셋 이름 (2).zip"
@@ -12,7 +10,7 @@ CLI 사용:
     from src.dataset_utill import extract_dataset
     extract_dataset("다운로드 받은 데이터셋 이름.zip")
 """
-from __future__ import annotations
+from __future__ import annotations # 타입 힌트를 문자열로 처리
 
 import zipfile
 from pathlib import Path
