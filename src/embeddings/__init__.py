@@ -14,6 +14,7 @@ def build_embedder(settings: Settings) -> BaseEmbedder:
         return OpenAIEmbedder(
             api_key=settings.openai_api_key,
             model=settings.openai_embedding_model,
+            base_url=settings.openai_base_url,
         )
     if provider == "huggingface":
         from .hf_embedder import HuggingFaceEmbedder

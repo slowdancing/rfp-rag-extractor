@@ -23,6 +23,8 @@ class Settings(BaseSettings):
 
     # OpenAI
     openai_api_key: str = ""
+    # OpenAI 호환 엔드포인트(예: Ollama "http://localhost:11434/v1"). 비우면 공식 OpenAI.
+    openai_base_url: str = ""
     openai_llm_model: str = "gpt-5-mini"
     openai_embedding_model: str = "text-embedding-3-small"
     # None 이면 temperature 미전송(모델 기본값). gpt-5 계열은 1만 허용하므로 기본 None.

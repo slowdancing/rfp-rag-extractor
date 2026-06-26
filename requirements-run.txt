@@ -1,0 +1,13 @@
+# ===== Ollama 경로용 경량 실행 의존성 =====
+# Ollama가 모델을 돌리므로 torch/transformers 불필요 → Python 3.x 어디서나 가볍게 설치.
+# (이미 chunks.csv 가 있고, 추론·평가만 할 때)
+#
+#   pip install -r requirements-run.txt
+
+openai>=1.30.0
+chromadb>=0.5.0
+tiktoken>=0.7.0
+rank_bm25>=0.2.2
+pandas>=2.2.0
+pydantic-settings>=2.3.0
+python-dotenv>=1.0.0

@@ -7,8 +7,9 @@ from .base import BaseEmbedder
 
 
 class OpenAIEmbedder(BaseEmbedder):
-    def __init__(self, api_key: str, model: str = "text-embedding-3-small"):
-        self._client = OpenAI(api_key=api_key)
+    def __init__(self, api_key: str, model: str = "text-embedding-3-small", base_url: str | None = None):
+        # base_url 지정 시 OpenAI 호환 엔드포인트(예: Ollama)로 임베딩 호출.
+        self._client = OpenAI(api_key=api_key, base_url=base_url or None)
         self._model = model
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:

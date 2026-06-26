@@ -15,6 +15,7 @@ def build_llm(settings: Settings) -> BaseLLM:
             api_key=settings.openai_api_key,
             model=settings.openai_llm_model,
             temperature=settings.openai_temperature,
+            base_url=settings.openai_base_url,
         )
     if provider == "huggingface":
         from .hf_llm import HuggingFaceLLM

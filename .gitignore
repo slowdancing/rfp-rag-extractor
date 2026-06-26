@@ -26,6 +26,7 @@ ENV/
 .env.*
 !.env.example
 !.env.hf.example
+!.env.ollama.example
 *.key
 credentials.json
 service-account*.json
