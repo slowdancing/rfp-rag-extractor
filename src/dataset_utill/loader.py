@@ -12,8 +12,6 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from pypdf import PdfReader
-
 
 @dataclass
 class RawDocument:
@@ -23,6 +21,9 @@ class RawDocument:
 
 
 def _read_pdf(path: Path) -> str:
+    # pypdf 는 실제 PDF 로딩 시에만 import (Ollama 등 경량 실행 경로에서 불필요)
+    from pypdf import PdfReader
+
     reader = PdfReader(str(path))
     return "\n".join((page.extract_text() or "") for page in reader.pages)
 
