@@ -1,0 +1,13 @@
+# ===== 2단계: GCP VM(L4 GPU) HuggingFace 스택 =====
+# Deep Learning VM(PyTorch GPU 이미지)에는 torch+CUDA가 미리 설치돼 있다.
+# 그 경우 아래만 추가 설치하면 된다. (torch는 이미지 것 사용)
+#
+#   pip install -r requirements.txt
+#   pip install -r requirements-hf.txt
+#
+# 만약 torch가 없다면 CUDA 버전에 맞는 휠을 먼저 설치할 것:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+
+transformers>=4.43.0
+sentence-transformers>=3.0.0
+accelerate>=0.33.0
