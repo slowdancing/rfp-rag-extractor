@@ -25,6 +25,7 @@ ENV/
 .env
 .env.*
 !.env.example
+!.env.hf.example
 *.key
 credentials.json
 service-account*.json
