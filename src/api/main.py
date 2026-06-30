@@ -84,33 +84,49 @@ def documents(
 
 @app.post("/recommend", response_model=DocumentList)
 def recommend(req: RecommendRequest) -> DocumentList:
-    """고객사 역량 설명(profile)으로 적합 RFP 추천 (임베딩 검색 + 메타필터)."""
+    """고객사 역량/요구(profile)로 적합 RFP 추천.
+
+    흐름: 질의 재작성(recall) → 하이브리드로 후보 다수 → 문서 단위 집계
+         → 메타필터 → (옵션) LLM 재랭킹(포함/제외 조건까지 반영) → 상위 top_k.
+    """
+    from src.catalog import get_doc
+    from src.rag.rerank import rerank
+
+    pipe = get_pipeline()
     try:
-        chunks = get_pipeline().retrieve(req.profile, top_k=60)
+        # 1) 재작성된 질의로 후보 recall 높이기 + 넉넉히 검색
+        search_q = pipe.rewrite_query(req.profile)
+        chunks = pipe.retrieve(search_q, top_k=40)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    # 청크 → 문서 단위 best 점수
-    best: dict[str, float] = {}
+    # 2) 청크 → 문서 단위(최고 점수 청크의 본문을 스니펫으로)
+    docs: dict[str, dict] = {}
     for c in chunks:
         d = c.metadata.get("doc_id")
-        if d and (d not in best or c.score > best[d]):
-            best[d] = c.score
-
-    from src.catalog import get_doc
-    cand = []
-    for doc_id, score in best.items():
-        meta = get_doc(doc_id)
+        if not d or d in docs:
+            continue
+        meta = get_doc(d)
         if meta:
-            cand.append({**meta, "score": round(float(score), 4)})
+            docs[d] = {**meta, "snippet": c.text[:300], "score": round(float(c.score), 4)}
+    cand = list(docs.values())
 
-    # 메타 필터 적용 후 점수순 정렬
+    # 3) 메타데이터 필터
     cand = filter_docs(
         cand, budget_min=req.budget_min, budget_max=req.budget_max,
         org=req.org, deadline_before=req.deadline_before,
     )
-    cand.sort(key=lambda d: d["score"], reverse=True)
-    return DocumentList(total=len(cand), items=[DocumentItem(**d) for d in cand[:req.top_k]])
+
+    # 4) LLM 재랭킹(요구·조건 반영) 또는 점수순
+    if req.rerank and cand:
+        try:
+            cand = rerank(pipe._llm, req.profile, cand, req.top_k)
+        except Exception:  # noqa: BLE001
+            cand = sorted(cand, key=lambda d: d["score"], reverse=True)[: req.top_k]
+    else:
+        cand = sorted(cand, key=lambda d: d["score"], reverse=True)[: req.top_k]
+
+    return DocumentList(total=len(cand), items=[DocumentItem(**d) for d in cand])
 
 
 @app.post("/ask", response_model=AskResponse)

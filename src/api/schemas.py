@@ -56,3 +56,4 @@ class RecommendRequest(BaseModel):
     budget_max: int | None = None
     org: str | None = None
     deadline_before: str | None = Field(None, description="이 날짜 이전 마감 (YYYY-MM-DD)")
+    rerank: bool = Field(True, description="LLM 재랭킹으로 정밀도↑ (조건·제외 처리). 끄면 임베딩 순서)")
