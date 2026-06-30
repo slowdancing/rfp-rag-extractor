@@ -30,3 +30,29 @@ class SummaryResponse(BaseModel):
     doc_id: str
     summary: str
     sources: list[SourceItem]
+
+
+class DocumentItem(BaseModel):
+    doc_id: str
+    title: str | None = None
+    org: str | None = None
+    budget: int | None = None
+    posted: str | None = None
+    deadline: str | None = None
+    filetype: str | None = None
+    summary: str | None = None
+    score: float | None = None   # 추천 시 관련도 점수
+
+
+class DocumentList(BaseModel):
+    total: int
+    items: list[DocumentItem]
+
+
+class RecommendRequest(BaseModel):
+    profile: str = Field(..., description="고객사 역량/관심 설명 (이걸로 적합 RFP 추천)")
+    top_k: int = Field(10, description="추천 문서 수")
+    budget_min: int | None = None
+    budget_max: int | None = None
+    org: str | None = None
+    deadline_before: str | None = Field(None, description="이 날짜 이전 마감 (YYYY-MM-DD)")

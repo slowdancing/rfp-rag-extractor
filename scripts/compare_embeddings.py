@@ -34,6 +34,17 @@ def _sanitize(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]+", "-", name).strip("-")
 
 
+def _make_embedder(model: str, s):
+    """모델명에 'hf:' 접두사가 있으면 sentence-transformers(로컬), 아니면 OpenAI호환."""
+    if model.startswith("hf:"):
+        from src.embeddings.hf_embedder import HuggingFaceEmbedder
+        import os
+        device = os.environ.get("HF_DEVICE", "cpu")
+        return HuggingFaceEmbedder(model=model[3:], device=device)
+    return OpenAIEmbedder(api_key=s.openai_api_key or "x", model=model,
+                          base_url=s.openai_base_url)
+
+
 def _meta(row, cols):
     out = {}
     for c in cols:
@@ -95,32 +106,34 @@ def main() -> None:
     rows = []
     for model in models:
         print(f"\n=== {model} ===")
-        embedder = OpenAIEmbedder(api_key=s.openai_api_key or "x",
-                                  model=model, base_url=s.openai_base_url)
-        cname = f"cmp_{_sanitize(model)}"
-        coll = client.get_or_create_collection(cname, metadata={"hnsw:space": "cosine"})
-        if coll.count() == 0:
-            print(f"  임베딩·적재 중... ({len(df)} 청크)")
-            _index(embedder, coll, df)
-        else:
-            print(f"  기존 컬렉션 재사용 ({coll.count()} 청크)")
+        try:
+            embedder = _make_embedder(model, s)
+            cname = f"cmp_{_sanitize(model)}"
+            coll = client.get_or_create_collection(cname, metadata={"hnsw:space": "cosine"})
+            if coll.count() == 0:
+                print(f"  임베딩·적재 중... ({len(df)} 청크)")
+                _index(embedder, coll, df)
+            else:
+                print(f"  기존 컬렉션 재사용 ({coll.count()} 청크)")
 
-        # dense
-        def dense_docs(q, _coll=coll, _emb=embedder):
-            r = _coll.query(query_embeddings=[_emb.embed_query(q)], n_results=max(KS))
-            return _doc_ranks(r["metadatas"][0])
-        dense = _evaluate(dense_docs, items)
+            # dense
+            def dense_docs(q, _coll=coll, _emb=embedder):
+                r = _coll.query(query_embeddings=[_emb.embed_query(q)], n_results=max(KS))
+                return _doc_ranks(r["metadatas"][0])
+            dense = _evaluate(dense_docs, items)
 
-        # hybrid (BM25 + 이 임베딩)
-        hy = HybridRetriever(embedder, _StoreShim(coll), s.chunks_path, candidates=CAND)
-        def hybrid_docs(q, _hy=hy):
-            return _doc_ranks([c.metadata for c in _hy.retrieve(q, top_k=max(KS))])
-        hybrid = _evaluate(hybrid_docs, items)
+            # hybrid (BM25 + 이 임베딩)
+            hy = HybridRetriever(embedder, _StoreShim(coll), s.chunks_path, candidates=CAND)
+            def hybrid_docs(q, _hy=hy):
+                return _doc_ranks([c.metadata for c in _hy.retrieve(q, top_k=max(KS))])
+            hybrid = _evaluate(hybrid_docs, items)
 
-        rows.append((model, "dense", dense))
-        rows.append((model, "hybrid", hybrid))
-        print(f"  dense  Hit@1 {dense['hit@1']:.3f} MRR {dense['mrr']:.3f}")
-        print(f"  hybrid Hit@1 {hybrid['hit@1']:.3f} MRR {hybrid['mrr']:.3f}")
+            rows.append((model, "dense", dense))
+            rows.append((model, "hybrid", hybrid))
+            print(f"  dense  Hit@1 {dense['hit@1']:.3f} MRR {dense['mrr']:.3f}")
+            print(f"  hybrid Hit@1 {hybrid['hit@1']:.3f} MRR {hybrid['mrr']:.3f}")
+        except Exception as exc:  # noqa: BLE001 - 한 모델 실패해도 나머지 계속
+            print(f"  [건너뜀] {model}: {exc}")
 
     # 표 저장
     lines = ["# 임베딩 모델 비교 (검색 성능)", "",

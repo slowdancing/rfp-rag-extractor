@@ -1,0 +1,7 @@
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; }
+body {
+  font-family: "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
+  background: #f4f6fa;
+  color: #1f2430;
+}
