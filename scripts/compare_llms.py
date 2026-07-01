@@ -28,7 +28,9 @@ from __future__ import annotations
 import json
 import os
 import random
+import statistics
 import sys
+import time
 from pathlib import Path
 
 from src.config import get_settings
@@ -57,9 +59,15 @@ def _write_report(ledger: dict) -> None:
         lines += [f"- 평가셋: `{any_e.get('eval_path','?')}` (표본 {any_e.get('n','?')}건)",
                   f"- 임베딩: {any_e.get('embedding','?')} · base_url: {any_e.get('base_url','?')}",
                   ""]
-    lines += ["| LLM | 정확도 | 정답/전체 |", "|------|------:|------:|"]
+    lines += ["> 응답시간 = 질문 1건당 `ask()`(질의재작성+검색+생성) 소요. 콜드스타트 1회 워밍업 후 측정.", "",
+              "| LLM | 정확도 | 정답/전체 | 평균응답(s) | 중앙값(s) |",
+              "|------|------:|------:|------:|------:|"]
     for model, e in sorted(ledger.items(), key=lambda kv: kv[1]["acc"], reverse=True):
-        lines.append(f"| {model} | {e['acc']:.3f} | {e['correct']}/{e['total']} |")
+        avg = e.get("avg_sec")
+        med = e.get("med_sec")
+        avgs = f"{avg:.2f}" if isinstance(avg, (int, float)) else "-"
+        meds = f"{med:.2f}" if isinstance(med, (int, float)) else "-"
+        lines.append(f"| {model} | {e['acc']:.3f} | {e['correct']}/{e['total']} | {avgs} | {meds} |")
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text("\n".join(lines), encoding="utf-8")
 
@@ -102,16 +110,27 @@ def main() -> None:
                             base_url=s.openai_base_url, temperature=s.openai_temperature)
             llm_base = s.openai_base_url or "OpenAI"
         pipe = RAGPipeline(embedder, store, llm, top_k=s.top_k, hybrid_retriever=hybrid)
+        # 워밍업 1회(모델 로딩 등 콜드스타트를 응답시간에서 제외) — 채점엔 미포함
+        try:
+            pipe.ask(items[0]["question"])
+        except Exception:  # noqa: BLE001
+            pass
         total = correct = 0
+        latencies = []
         for it in items:
+            t0 = time.perf_counter()
             pred = pipe.ask(it["question"]).answer
+            latencies.append(time.perf_counter() - t0)
             total += 1
             if is_correct(it, pred):
                 correct += 1
         acc = correct / total if total else 0
+        avg_sec = statistics.mean(latencies) if latencies else None
+        med_sec = statistics.median(latencies) if latencies else None
         # 모델별 결과를 원장에 upsert 하고, 매번 리포트를 다시 써서 중간에 죽어도 보존
         ledger[model] = {
             "acc": acc, "correct": correct, "total": total, "n": n,
+            "avg_sec": avg_sec, "med_sec": med_sec,       # 질문 1건당 ask() 응답시간
             "eval_path": path,
             "embedding": f"{s.embedding_provider}/{s.openai_embedding_model}",
             "base_url": s.openai_base_url or "OpenAI",  # 검색(임베딩) 기준
@@ -120,7 +139,8 @@ def main() -> None:
         LEDGER.parent.mkdir(parents=True, exist_ok=True)
         LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=2), encoding="utf-8")
         _write_report(ledger)
-        print(f"  정확도 {acc:.3f} ({correct}/{total})  [저장됨]")
+        avgs = f"{avg_sec:.2f}s" if avg_sec is not None else "-"
+        print(f"  정확도 {acc:.3f} ({correct}/{total})  평균응답 {avgs}  [저장됨]")
 
     print(f"\n[compare] 원장 -> {LEDGER}  /  표 -> {REPORT}")
 
