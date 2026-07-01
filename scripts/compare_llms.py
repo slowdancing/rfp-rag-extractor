@@ -13,6 +13,12 @@ end-to-end: 질의재작성→하이브리드검색→해당 LLM 생성→채점
   python -m scripts.compare_llms exaone3.5:2.4b 30
   python -m scripts.compare_llms gemma2:2b 30
 
+OpenAI 클라우드 LLM과 비교(오픈소스 vs OpenAI):
+  검색(임베딩 bge-m3)은 .env 그대로 두고, LLM만 실제 OpenAI로 보낸다.
+  모델명에 `openai:` 접두사를 붙이면 base_url 없이(진짜 OpenAI) 호출한다.
+  실제 키는 환경변수 OPENAI_CLOUD_KEY 로 준다(.env의 더미 키와 분리).
+    OPENAI_CLOUD_KEY=sk-... python -m scripts.compare_llms openai:gpt-5-mini 30
+
 결과는 `results/compare_llms.json`(원장)에 모델별로 누적되고,
 매 실행마다 `results/compare_llms.md`(비교표)를 원장 전체로 다시 만든다.
 따라서 한 개씩 따로 돌려도 이전 결과가 사라지지 않는다.
@@ -20,6 +26,7 @@ end-to-end: 질의재작성→하이브리드검색→해당 LLM 생성→채점
 from __future__ import annotations
 
 import json
+import os
 import random
 import sys
 from pathlib import Path
@@ -81,8 +88,19 @@ def main() -> None:
     ledger = _load_ledger()
     for model in models:
         print(f"\n=== {model} ===")
-        llm = OpenAILLM(api_key=s.openai_api_key or "x", model=model,
-                        base_url=s.openai_base_url, temperature=s.openai_temperature)
+        # 검색(임베딩)은 위에서 .env대로 고정. LLM만 교체해 공정 비교.
+        if model.startswith("openai:"):
+            # 실제 OpenAI 클라우드로 (base_url 없음). 키는 OPENAI_CLOUD_KEY 우선.
+            real_model = model.split(":", 1)[1]
+            key = os.environ.get("OPENAI_CLOUD_KEY") or s.openai_api_key
+            llm = OpenAILLM(api_key=key, model=real_model,
+                            base_url=None, temperature=s.openai_temperature)
+            llm_base = "OpenAI(cloud)"
+        else:
+            # 로컬 Ollama(.env base_url)로
+            llm = OpenAILLM(api_key=s.openai_api_key or "x", model=model,
+                            base_url=s.openai_base_url, temperature=s.openai_temperature)
+            llm_base = s.openai_base_url or "OpenAI"
         pipe = RAGPipeline(embedder, store, llm, top_k=s.top_k, hybrid_retriever=hybrid)
         total = correct = 0
         for it in items:
@@ -96,7 +114,8 @@ def main() -> None:
             "acc": acc, "correct": correct, "total": total, "n": n,
             "eval_path": path,
             "embedding": f"{s.embedding_provider}/{s.openai_embedding_model}",
-            "base_url": s.openai_base_url or "OpenAI",
+            "base_url": s.openai_base_url or "OpenAI",  # 검색(임베딩) 기준
+            "llm_host": llm_base,                        # LLM 실행 위치(Ollama vs OpenAI)
         }
         LEDGER.parent.mkdir(parents=True, exist_ok=True)
         LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=2), encoding="utf-8")
