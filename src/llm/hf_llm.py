@@ -8,7 +8,7 @@ from .base import BaseLLM
 
 
 class HuggingFaceLLM(BaseLLM):
-    def __init__(self, model: str = "Qwen/Qwen2.5-7B-Instruct", device: str = "cuda"):
+    def __init__(self, model: str = "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct", device: str = "cuda"):
         # 무거운 import 는 실제 사용할 때만 로드한다.
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer

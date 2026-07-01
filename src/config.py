@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     # None 이면 temperature 미전송(모델 기본값). gpt-5 계열은 1만 허용하므로 기본 None.
     openai_temperature: float | None = None
 
-    # HuggingFace (2단계)
-    hf_llm_model: str = "Qwen/Qwen2.5-7B-Instruct"
+    # HuggingFace (2단계) — 확정 모델(실험 근거: results/model_decision.md)
+    hf_llm_model: str = "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct"
     hf_embedding_model: str = "BAAI/bge-m3"
     hf_device: str = "cuda"
 
