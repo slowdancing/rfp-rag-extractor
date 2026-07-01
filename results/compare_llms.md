@@ -5,6 +5,9 @@
 
 - 평가셋: `data/eval/eval_set.draft.jsonl` (표본 30건)
 - 검색: 하이브리드(BM25+dense) 고정. **핵심 두 모델(EXAONE·gpt-5-mini)은 임베딩 bge-m3로 동일**.
+- **실험 환경**: 두 모델 모두 **GCP VM에서 실행**. GPU **NVIDIA L4**, vCPU 4(물리 2코어), RAM 16GB.
+  자체호스팅 LLM(EXAONE)은 Ollama로 서빙.
+  - 응답시간 참고: EXAONE는 VM GPU에서 직접 생성 / gpt-5-mini는 VM에서 OpenAI API 호출(생성은 OpenAI 클라우드) → 네트워크 왕복 포함.
 
 | LLM | 파라미터 | 검색(임베딩) | 실행 위치 | 정확도 | 정답/전체 | 평균응답 | 중앙응답 |
 |------|---:|------|------|------:|------:|------:|------:|

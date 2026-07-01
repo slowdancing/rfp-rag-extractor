@@ -41,6 +41,7 @@
 LLM만 바꿔 한 개씩 실행(결과는 `compare_llms.json` 원장 누적, 표는 `compare_llms.md` 자동 생성).
 평가셋 `eval_set.draft.jsonl` 표본 30건, 임베딩 bge-m3·하이브리드 고정.
 VM 메모리 안전을 위해 경량 양자화 3종 → 배포용 7.8B 순으로 한 개씩 측정.
+실험 환경: **GCP VM** (GPU NVIDIA L4, vCPU 4/물리 2코어, RAM 16GB) — 두 모델 모두 이 VM에서 실행.
 
 **검색을 bge-m3로 동일 고정**하고 LLM만 교체(공정 비교). 응답시간은 질문 1건당
 `ask()`(질의재작성+검색+생성) 소요, 콜드스타트 1회 워밍업 후 측정(VM/GPU 기준).
