@@ -23,7 +23,7 @@ class EvalItem:
     answer: str | None = None      # 정답(있으면 생성 평가에 사용)
     doc_id: str | None = None      # 정답 문서 ID(있으면 검색 평가에 사용)
 
-
+# goldenset에서 정답을 불러와 EvalItem클래스에 저장하는 함수, 결과값은 EvalItem을 원소로 가지는 리스트
 def load_eval_set(path: str) -> list[EvalItem]:
     items: list[EvalItem] = []
     for line in Path(path).read_text(encoding="utf-8").splitlines():
