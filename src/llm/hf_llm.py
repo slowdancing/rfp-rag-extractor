@@ -1,6 +1,13 @@
-"""HuggingFace 로컬 LLM 구현 (2단계, GCP VM + L4 GPU).
+"""HuggingFace 로컬 LLM 구현 — 대안 경로 (현재 배포 미사용).
 
-transformers 가 설치된 GPU 환경에서만 동작한다.
+⚠️ 현재 배포는 Ollama 경로를 사용한다: `provider=openai` + `base_url`(Ollama)로
+   EXAONE를 호출하며, 그 처리는 `openai_llm.py`(OpenAI 호환 클라이언트)가 담당한다.
+   → 즉 이 파일은 실행되지 않는다.
+
+이 구현은 torch/transformers 로 모델을 GPU에 **직접 로딩**하는 대안 경로다.
+- 남겨둔 이유: 추상화(백엔드 교체 가능) 예시 + Ollama에 없는 커스텀/파인튜닝 모델을
+  직접 돌려야 할 때의 폴백. `provider=huggingface`일 때만 동작한다.
+- transformers 가 설치된 GPU 환경에서만 사용 가능(무거운 import 는 지연 로딩).
 """
 from __future__ import annotations
 
