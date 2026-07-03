@@ -1,6 +1,11 @@
-# GCP VM(L4 GPU) + HuggingFace 실행 가이드
+# GCP VM(L4 GPU) 실행 가이드 (직접 VM 생성 시)
 
-> 목표: OpenAI 대신 자체 호스팅(HF) 모델로 RAG 실행 → OpenAI vs HF 성능 비교.
+> 목표: OpenAI 대신 자체 호스팅 모델로 RAG 실행 → OpenAI vs 자체호스팅 비교.
+>
+> ⚠️ **이 문서는 "직접 VM을 만들 때"의 일반 가이드(HF/torch 경로)** 다.
+> **실제 이번 프로젝트는 부트캠프 제공 JupyterHub VM(sudo 없음)에서 Ollama 경로로 진행**했다
+> → 실제 설치·배포·트러블슈팅은 **`VM_배포_학습정리.md`**, Ollama 경로는 **`docs/ollama_setup.md`** 참고.
+> 확정 모델은 **bge-m3 + EXAONE-3.5-7.8B**.
 
 ## 0. 사전 (완료 가정)
 - GCP 결제 등록 ✅
@@ -54,10 +59,10 @@ bash scripts/setup_gcp.sh        # 의존성 설치 + GPU 확인 + .env 준비
 ## 5. 재인덱싱 + 실행
 ```bash
 python -m scripts.ingest                 # bge-m3 로 임베딩 (HF 컬렉션 생성)
-python -m scripts.ask "이 사업의 예산은?"   # Qwen 으로 답변 (첫 실행 시 모델 다운로드)
+python -m scripts.ask "이 사업의 예산은?"   # EXAONE 으로 답변 (첫 실행 시 모델 다운로드)
 python -m scripts.eval_retrieval         # 검색 평가 (HF)
 ```
-> 모델 첫 사용 시 HuggingFace 에서 자동 다운로드 (bge-m3 ~2GB, Qwen-7B ~15GB).
+> 모델 첫 사용 시 HuggingFace 에서 자동 다운로드 (bge-m3 ~2GB, EXAONE-7.8B ~16GB).
 
 ## 6. OpenAI vs HF 비교
 - HF 결과(`results/eval_retrieval.md`)를 OpenAI 결과와 비교.

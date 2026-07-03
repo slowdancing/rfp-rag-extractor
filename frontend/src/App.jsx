@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./App.css";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API || "http://localhost:8000";
 
 const won = (n) => (n == null ? "-" : n.toLocaleString("ko-KR") + "원");
 

@@ -13,12 +13,16 @@
 |------|------|
 | 데이터 파이프라인 (추출·보강·정제·청킹) | ✅ 완료 |
 | 임베딩 & 벡터 적재 (ChromaDB, 모델별 컬렉션 분리) | ✅ 완료 |
-| 질의응답 (질의재작성 → 하이브리드 검색 → LLM) | ✅ 동작 |
-| 검색/생성 평가 (골든셋, Hit@k·MRR) | ✅ 동작 |
-| 1단계 OpenAI API | ✅ |
-| 2단계 GCP VM(L4) + 자체호스팅(Ollama) | ✅ 동작 |
+| 질의응답 (질의재작성 → 하이브리드 검색 → LLM 재랭킹) | ✅ 동작 |
+| 검색/생성 평가 (골든셋 + LLM-judge 교차검증) | ✅ 완료 |
+| **모델 확정** (임베딩·LLM·검색, OpenAI 대비 정량 검증) | ✅ 완료 |
+| GUI (FastAPI + React: 추천·필터·AI요약) | ✅ 동작 |
+| 2단계 GCP VM(L4) 자체호스팅 + 배포·실동작 시연 | ✅ 완료 |
 
-**핵심 설계**: 임베딩·LLM·벡터스토어를 추상화 → **`.env`만 바꿔 OpenAI / HuggingFace / Ollama 전환** (코드 불변).
+**확정 모델**: 임베딩 **bge-m3**, LLM **EXAONE-3.5-7.8B**, 검색 **하이브리드**(BM25+dense, RRF) — 근거 `results/model_decision.md`.
+- EXAONE는 gpt-5-mini와 **정확도 동률**, **서술형 답변품질 우세**(4.37 vs 4.20, LLM-judge 교차검증), **응답 2.6배 빠름**, 무료·기밀보호.
+
+**핵심 설계**: 임베딩·LLM·벡터스토어를 추상화 → **`.env`만 바꿔 OpenAI / Ollama(자체호스팅) / HuggingFace 전환** (코드 불변).
 
 ---
 
@@ -27,8 +31,8 @@
 | 환경 | 임베딩 | LLM | 설정 |
 |------|--------|-----|------|
 | 로컬 (1단계) | OpenAI `text-embedding-3-small` | OpenAI `gpt-5-mini` | `.env.example` |
-| GCP VM (2단계) | Ollama `bge-m3` | Ollama `qwen2.5:7b` | `.env.ollama.example` |
-| GCP VM (HF직접) | `bge-m3` (sentence-transformers) | `Qwen` (transformers) | `.env.hf.example` |
+| **GCP VM (2단계, 배포)** | Ollama `bge-m3` | Ollama **`exaone3.5:7.8b`** | `.env.ollama.example` |
+| GCP VM (HF직접, 대안) | `bge-m3` (sentence-transformers) | `EXAONE` (transformers) | `.env.hf.example` |
 
 > Ollama는 **OpenAI 호환 API** 라, `provider=openai` + `OPENAI_BASE_URL=http://localhost:11434/v1` 로 기존 코드 재사용.
 
@@ -70,6 +74,8 @@ rfp-rag-extractor/
 | `python -m scripts.eval_retrieval` | 검색 평가 (dense vs hybrid) |
 | `python -m scripts.eval_generation [N]` | 생성(답변) 평가 |
 | `python -m scripts.compare_embeddings <모델...>` | 임베딩 모델 비교 |
+| `python -m scripts.compare_llms <모델...> [N]` | LLM 비교(정확도·응답시간, `openai:` 접두사로 OpenAI 대비) |
+| `python -m scripts.compare_llms_judge` | 서술형 답변품질 LLM-judge 교차검증 |
 | `python -m scripts.make_goldenset` | 메타데이터 골든셋 초안 |
 | `python -m scripts.make_content_goldenset` | 내용형 골든셋 초안(LLM) |
 | `python -m scripts.exp_chunk_size` | 청크 크기 실험 |

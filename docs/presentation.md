@@ -98,12 +98,18 @@ results/
 
 → 한국어 데이터에선 **한국어 강한 오픈모델(bge-m3·KURE)이 OpenAI 범용 임베딩을 능가**(dense 격차 +0.13). 무료·자체호스팅인데 품질도 우수.
 
-**③ LLM 비교 (참고)**
-- Qwen2.5-7B: 한국어 답변 뒤 **중국어 번역 혼입**(중국 모델 특성) → 프롬프트로 완화하나 제약.
-- → 한국어 특화 **EXAONE** 채택 방향.
+**③ LLM 비교 — EXAONE vs OpenAI (검색 bge-m3 고정, 상세: `results/compare_llms.md`·`compare_llms_judge.md`)**
 
-**④ 생성 평가 (내용형 골든셋 28건, LLM-judge)**
-- 검색 Hit@5 0.96 / 답변 품질 평균 **3.89 / 5** → 본문 근거 질문에 대체로 정확히 답변.
+| 항목 | EXAONE-3.5-7.8B(자체) | gpt-5-mini(OpenAI) |
+|------|:---:|:---:|
+| 추출 정확도(30건) | 0.533 | 0.533 (동률) |
+| 서술형 답변품질(59건, LLM-judge 교차) | **4.37** | 4.20 |
+| 응답속도(중앙값) | **3.78s** | 9.81s |
+
+- 답변품질 교차검증: **두 심판(EXAONE·gpt) 모두 EXAONE를 높게** 평가. 상대 심판 gpt조차 EXAONE(4.31)>자기(4.14) → 자기편향 아님.
+- Qwen2.5는 최하위 + 한국어 답변에 중국어 혼입 → 부적합. 경량·풀사이즈 모두 EXAONE가 타 계열 앞섬(한국어 특화가 결정적).
+
+**④ 종합**: **정확도 대등 + 서술형 품질·속도(2.6배)·비용(무료)·기밀보호 전 축에서 자체호스팅 EXAONE 우위.**
 
 ---
 
@@ -112,7 +118,7 @@ results/
 | 구분 | 채택 | 이유 |
 |------|------|------|
 | **임베딩** | **bge-m3** | 한국어 검색 우수(OpenAI 압도), 무료·범용(Ollama·HF) |
-| **LLM** | **EXAONE-3.5-7.8B** | 한국어 특화, Qwen 중국어 혼입 문제 없음 |
+| **LLM** | **EXAONE-3.5-7.8B** | gpt-5-mini와 정확도 동률·서술형 품질 우세(4.37>4.20)·응답 2.6배 빠름·무료·한국어 특화 |
 | **검색** | **하이브리드(BM25+dense, RRF)** | 전 지표 우위, 자연어 질문 해결 |
 | **호스팅** | 자체호스팅(Ollama, GPU) | 무료·기밀보호 (개발·데모는 OpenAI 잠정 가능) |
 
@@ -124,7 +130,7 @@ results/
 ## 6. 2단계: 자체 호스팅 (GCP + Ollama)
 
 - **1단계**: OpenAI API (text-embedding-3-small / gpt-5-mini)
-- **2단계**: GCP VM(L4 GPU) + **Ollama** 로 자체 호스팅 (bge-m3 / qwen2.5)
+- **2단계**: GCP VM(L4 GPU) + **Ollama** 로 자체 호스팅 (bge-m3 / **exaone3.5:7.8b**)
 - Ollama가 **OpenAI 호환 API** 제공 → `provider=openai` + `base_url`만 바꿔 **코드 0줄 수정**으로 전환.
 - 의미: 외부 API 의존 제거 · 데이터 외부 미유출(기밀 RFP) · 대량 처리 비용 통제.
 
@@ -161,10 +167,10 @@ CLI → **웹 UI(FastAPI 백엔드 + React 프론트)** 로 구현 완료.
 [React 프론트 :5173]
    │ 고객 역량 입력 / 필터 / AI요약 버튼
    ▼ (fetch, CORS)
-[FastAPI 백엔드 :8000 — src/api]
+[FastAPI 백엔드 — src/api]
    │ /recommend  /documents  /summarize  /ask
    ▼
-[RAG 파이프라인] → [ChromaDB + Ollama/OpenAI]
+[RAG 파이프라인] → [ChromaDB + Ollama(EXAONE·bge-m3)]
 ```
 
 **구현된 화면 (`frontend/`)**
@@ -174,8 +180,12 @@ CLI → **웹 UI(FastAPI 백엔드 + React 프론트)** 로 구현 완료.
 
 **설계 포인트**: 목록·필터는 빠르게(LLM 거의 없음), **AI 요약은 버튼 누를 때만** 생성 → 비용·속도 효율.
 
-**실행**: `uvicorn src.api.main:app --reload` + `cd frontend && npm run dev` → http://localhost:5173
-**배포(예정)**: GCP VM에서 FastAPI + 정적 빌드 서빙, 인증·방화벽.
+**실행**: `uvicorn src.api.main:app` + `cd frontend && npm run dev` → http://localhost:5173
+
+**배포 ✅ (자체호스팅 실동작 확인)**
+- GCP VM에서 **EXAONE + bge-m3 + FastAPI 상시구동**, GCP 방화벽으로 API 포트 개방(내 IP 한정).
+- **로컬 브라우저(React) → VM의 EXAONE 서비스** 호출 성공 → 실제 자체호스팅 서비스 시연 완료.
+- 웹전용·무sudo 환경 대응 노트북 데모(`notebooks/demo.ipynb`)도 준비. 상세: `VM_배포_학습정리.md`.
 
 ---
 
