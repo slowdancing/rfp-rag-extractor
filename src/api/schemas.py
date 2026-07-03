@@ -65,3 +65,27 @@ class RecommendRequest(BaseModel):
     org: str | None = None
     deadline_before: str | None = Field(None, description="이 날짜 이전 마감 (YYYY-MM-DD)")
     rerank: bool = Field(True, description="LLM 재랭킹으로 정밀도↑ (조건·제외 처리). 끄면 임베딩 순서)")
+
+
+# ===== 적격성 판정 =====
+class EligibilityRequest(BaseModel):
+    doc_id: str = Field(..., description="판정할 문서 ID")
+    company_size: str | None = Field(None, description="기업규모(중소기업/중견기업/대기업)")
+    industry: str | None = Field(None, description="업종/주력분야")
+    region: str | None = Field(None, description="본사 소재지(지역)")
+    track_record: str | None = Field(None, description="보유 실적/역량")
+    certifications: str | None = Field(None, description="보유 인증/자격/면허")
+
+
+class EligibilityItem(BaseModel):
+    requirement: str            # RFP 자격요건
+    status: str                 # "O"(충족) | "X"(미충족) | "?"(확인필요)
+    reason: str                 # 판정 근거
+
+
+class EligibilityResponse(BaseModel):
+    doc_id: str
+    verdict: str                # "적격" | "부적격" | "확인필요"
+    summary: str                # 한 줄 종합
+    items: list[EligibilityItem]
+    sources: list[SourceItem]

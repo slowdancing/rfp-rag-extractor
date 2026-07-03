@@ -5,6 +5,9 @@ const API = import.meta.env.VITE_API || "http://localhost:8000";
 
 const won = (n) => (n == null ? "-" : n.toLocaleString("ko-KR") + "원");
 
+const VERDICT_CLASS = { "적격": "v-ok", "부적격": "v-no", "확인필요": "v-maybe" };
+const STATUS_ICON = { O: "✅", X: "❌", "?": "⚠️" };
+
 export default function App() {
   const [profile, setProfile] = useState("");
   const [q, setQ] = useState("");
@@ -17,6 +20,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("");
   const [summaries, setSummaries] = useState({}); // doc_id -> {loading, text}
+  const [company, setCompany] = useState({ size: "", industry: "", region: "", record: "", certs: "" });
+  const [elig, setElig] = useState({}); // doc_id -> {loading, verdict, summary, items}
 
   async function recommend() {
     if (!profile.trim()) return alert("고객사 역량/관심 분야를 입력하세요.");
@@ -66,6 +71,28 @@ export default function App() {
     setLoading(false);
   }
 
+  async function checkEligibility(docId) {
+    setElig((s) => ({ ...s, [docId]: { loading: true } }));
+    try {
+      const r = await fetch(`${API}/eligibility`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          doc_id: docId,
+          company_size: company.size || null,
+          industry: company.industry || null,
+          region: company.region || null,
+          track_record: company.record || null,
+          certifications: company.certs || null,
+        }),
+      });
+      const j = await r.json();
+      setElig((s) => ({ ...s, [docId]: { loading: false, ...j } }));
+    } catch (e) {
+      setElig((s) => ({ ...s, [docId]: { loading: false, error: e.message } }));
+    }
+  }
+
   async function summarize(docId) {
     setSummaries((s) => ({ ...s, [docId]: { loading: true } }));
     try {
@@ -97,6 +124,21 @@ export default function App() {
           <label>발주기관<input value={org} onChange={(e) => setOrg(e.target.value)} placeholder="예: 대학교" /></label>
           <label>마감 이전<input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label>
           <button onClick={listDocs}>필터로 목록 보기</button>
+
+          <h3 style={{ marginTop: 20 }}>🏢 회사 프로필</h3>
+          <p className="muted" style={{ margin: "0 0 8px" }}>적격성 판정에 사용됩니다.</p>
+          <label>기업규모
+            <select value={company.size} onChange={(e) => setCompany({ ...company, size: e.target.value })}>
+              <option value="">선택</option>
+              <option>중소기업</option>
+              <option>중견기업</option>
+              <option>대기업</option>
+            </select>
+          </label>
+          <label>업종/주력분야<input value={company.industry} onChange={(e) => setCompany({ ...company, industry: e.target.value })} placeholder="예: 소프트웨어 개발, SI" /></label>
+          <label>소재지<input value={company.region} onChange={(e) => setCompany({ ...company, region: e.target.value })} placeholder="예: 서울" /></label>
+          <label>보유 실적/역량<textarea value={company.record} onChange={(e) => setCompany({ ...company, record: e.target.value })} placeholder="예: 대학 학사시스템 구축 3건, 공공 전자조달 경험" /></label>
+          <label>보유 인증/자격<input value={company.certs} onChange={(e) => setCompany({ ...company, certs: e.target.value })} placeholder="예: GS인증 1등급, 직접생산증명" /></label>
         </aside>
 
         <main>
@@ -151,6 +193,33 @@ export default function App() {
                     <pre className="ai-summary">{summaries[it.doc_id].text}</pre>
                   )
                 )}
+                <button
+                  className="ai-btn"
+                  onClick={() => checkEligibility(it.doc_id)}
+                  disabled={elig[it.doc_id]?.loading}
+                >
+                  {elig[it.doc_id]?.loading ? "적격성 판정 중…" : "⚖️ 적격성 판정"}
+                </button>
+                {elig[it.doc_id]?.items && (
+                  <div className="elig">
+                    <div className={"elig-verdict " + (VERDICT_CLASS[elig[it.doc_id].verdict] || "")}>
+                      {elig[it.doc_id].verdict} — {elig[it.doc_id].summary}
+                    </div>
+                    {elig[it.doc_id].items.length > 0 && (
+                      <table className="ai-summary-table">
+                        <tbody>
+                          {elig[it.doc_id].items.map((row, i) => (
+                            <tr key={i}>
+                              <th>{STATUS_ICON[row.status] || "⚠️"}</th>
+                              <td><b>{row.requirement}</b><br />{row.reason}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+                {elig[it.doc_id]?.error && <p className="muted">판정 실패: {elig[it.doc_id].error}</p>}
               </li>
             ))}
           </ul>

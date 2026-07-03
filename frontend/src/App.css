@@ -70,5 +70,17 @@ header p { margin: 0 0 16px; color: #6b7280; font-size: 14px; }
   background: #f3f4f6; border-right: 1px solid #e5e7eb;
 }
 .ai-summary-table td { color: #111827; }
+.ai-summary-table th:first-child { text-align: center; }
+
+.elig { margin-top: 12px; }
+.elig-verdict {
+  padding: 8px 12px; border-radius: 8px; font-weight: 700; font-size: 14px;
+  border: 1px solid transparent;
+}
+.elig-verdict.v-ok { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.elig-verdict.v-no { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.elig-verdict.v-maybe { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.elig .ai-summary-table { margin-top: 8px; }
+.elig .ai-summary-table th { width: 40px; background: #fff; border-right: none; font-size: 16px; }
 
 @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }

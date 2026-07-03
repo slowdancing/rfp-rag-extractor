@@ -17,6 +17,9 @@ from .schemas import (
     AskResponse,
     DocumentItem,
     DocumentList,
+    EligibilityItem,
+    EligibilityRequest,
+    EligibilityResponse,
     RecommendRequest,
     SourceItem,
     SummaryRequest,
@@ -157,6 +160,67 @@ def recommend(req: RecommendRequest) -> DocumentList:
         cand = sorted(cand, key=lambda d: d["score"], reverse=True)[: req.top_k]
 
     return DocumentList(total=len(cand), items=[DocumentItem(**d) for d in cand])
+
+
+def _company_text(req: EligibilityRequest) -> str:
+    """회사 프로필 필드를 LLM 프롬프트용 텍스트로."""
+    parts = [
+        f"- 기업규모: {req.company_size}" if req.company_size else "",
+        f"- 업종/주력분야: {req.industry}" if req.industry else "",
+        f"- 소재지: {req.region}" if req.region else "",
+        f"- 보유 실적/역량: {req.track_record}" if req.track_record else "",
+        f"- 보유 인증/자격: {req.certifications}" if req.certifications else "",
+    ]
+    body = "\n".join(p for p in parts if p)
+    return body or "(회사 정보가 입력되지 않음)"
+
+
+def _parse_eligibility(text: str) -> tuple[str, str, list[EligibilityItem]]:
+    """LLM JSON → (verdict, summary, items). verdict는 항목 status로 결정론적 산정."""
+    import json
+    import re
+
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    data = {}
+    if m:
+        try:
+            data = json.loads(m.group())
+        except Exception:  # noqa: BLE001
+            data = {}
+    items = []
+    for it in (data.get("items") or []):
+        st = str(it.get("status", "?")).upper().strip()
+        st = st if st in ("O", "X", "?") else "?"
+        items.append(EligibilityItem(
+            requirement=str(it.get("requirement", "")).strip(),
+            status=st,
+            reason=str(it.get("reason", "")).strip(),
+        ))
+    statuses = {i.status for i in items}
+    if not items:
+        verdict = "확인필요"
+    elif "X" in statuses:
+        verdict = "부적격"
+    elif "?" in statuses:
+        verdict = "확인필요"
+    else:
+        verdict = "적격"
+    summary = str(data.get("summary", "")).strip() or "자격요건을 확인하세요."
+    return verdict, summary, items
+
+
+@app.post("/eligibility", response_model=EligibilityResponse)
+def eligibility(req: EligibilityRequest) -> EligibilityResponse:
+    """RFP 입찰참가자격 vs 우리 회사 프로필 대조 → 적격/부적격/확인필요 + 항목별 근거."""
+    try:
+        ans = get_pipeline().assess_eligibility(req.doc_id, _company_text(req))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    verdict, summary, items = _parse_eligibility(ans.answer)
+    return EligibilityResponse(
+        doc_id=req.doc_id, verdict=verdict, summary=summary,
+        items=items, sources=_to_source_items(ans),
+    )
 
 
 @app.post("/ask", response_model=AskResponse)
