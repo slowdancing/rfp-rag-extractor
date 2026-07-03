@@ -117,7 +117,10 @@ export default function App() {
               <li key={it.doc_id} className="card">
                 <div className="card-head">
                   <h4>{it.title || it.doc_id}</h4>
-                  {it.score != null && <span className="score">관련도 {it.score}</span>}
+                  {it.score != null && (
+                    <span className="score">관련도 {Math.round(Math.max(0, it.score) * 100)}%</span>
+                  )}
+                  {it.source && <span className="score">{it.source}</span>}
                 </div>
                 <div className="meta">
                   <span>🏛 {it.org || "-"}</span>

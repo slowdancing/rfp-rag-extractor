@@ -96,13 +96,15 @@ class HybridRetriever:
 
         top_ids = sorted(rrf, key=rrf.get, reverse=True)[:top_k]
 
-        # 결과 조립 (dense 결과의 텍스트/메타 우선, 없으면 BM25 df 에서)
+        # 결과 조립: 순서는 RRF(융합 순위) 그대로, 표시 점수는 dense 코사인 유사도(0~1).
+        #   RRF 점수는 순위용이라 절대값이 작음(1위도 ~0.03) → UI엔 직관적인 코사인을 보여준다.
         dense_by_id = {c.metadata.get("chunk_id"): c for c in dense}
         results = []
         for cid in top_ids:
             if cid in dense_by_id:
-                c = dense_by_id[cid]
-                results.append(RetrievedChunk(c.text, c.metadata, rrf[cid]))
+                c = dense_by_id[cid]           # c.score = 코사인 유사도(1 - cosine distance)
+                results.append(RetrievedChunk(c.text, c.metadata, c.score))
             elif cid in id_to_idx:
-                results.append(self._row_to_chunk(id_to_idx[cid], rrf[cid]))
+                # BM25 에만 잡힌 문서는 dense 후보(50) 밖이라 코사인 미측정 → 0.0
+                results.append(self._row_to_chunk(id_to_idx[cid], 0.0))
         return results
