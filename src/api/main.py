@@ -21,6 +21,7 @@ from .schemas import (
     SourceItem,
     SummaryRequest,
     SummaryResponse,
+    SummaryRow,
 )
 
 app = FastAPI(
@@ -168,12 +169,40 @@ def ask(req: AskRequest) -> AskResponse:
     return AskResponse(answer=ans.answer, sources=_to_source_items(ans))
 
 
+def _summary_rows(text: str) -> list[SummaryRow]:
+    """LLM이 낸 JSON 요약을 고정 스키마 순서의 표 행으로 변환.
+
+    JSON 파싱 실패 시엔 원문을 한 행('요약')으로 폴백해 화면이 비지 않게 한다.
+    """
+    import json
+    import re
+
+    from src.rag import prompts
+
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    data = {}
+    if m:
+        try:
+            data = json.loads(m.group())
+        except Exception:  # noqa: BLE001
+            data = {}
+    if not isinstance(data, dict) or not data:
+        return [SummaryRow(label="요약", value=text.strip())]
+    rows = []
+    for f in prompts.SUMMARY_FIELDS:
+        v = data.get(f)
+        v = str(v).strip() if v not in (None, "", []) else "명시되지 않음"
+        rows.append(SummaryRow(label=f, value=v))
+    return rows
+
+
 @app.post("/summarize", response_model=SummaryResponse)
 def summarize(req: SummaryRequest) -> SummaryResponse:
     try:
-        ans = get_pipeline().summarize(req.doc_id)
+        ans = get_pipeline().summarize(req.doc_id, structured=True)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return SummaryResponse(
-        doc_id=req.doc_id, summary=ans.answer, sources=_to_source_items(ans)
+        doc_id=req.doc_id, summary=ans.answer, rows=_summary_rows(ans.answer),
+        sources=_to_source_items(ans),
     )

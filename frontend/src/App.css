@@ -56,5 +56,19 @@ header p { margin: 0 0 16px; color: #6b7280; font-size: 14px; }
   border-radius: 8px; font-size: 13px; line-height: 1.6; white-space: pre-wrap;
   font-family: "Malgun Gothic", system-ui, sans-serif;
 }
+.ai-summary-table {
+  margin: 12px 0 0; width: 100%; border-collapse: collapse; font-size: 13px;
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
+}
+.ai-summary-table th, .ai-summary-table td {
+  padding: 8px 10px; text-align: left; vertical-align: top;
+  border-bottom: 1px solid #e5e7eb; line-height: 1.5;
+}
+.ai-summary-table tr:last-child th, .ai-summary-table tr:last-child td { border-bottom: none; }
+.ai-summary-table th {
+  width: 110px; white-space: nowrap; color: #374151; font-weight: 600;
+  background: #f3f4f6; border-right: 1px solid #e5e7eb;
+}
+.ai-summary-table td { color: #111827; }
 
 @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }

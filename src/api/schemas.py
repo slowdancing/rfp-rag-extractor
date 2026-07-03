@@ -26,9 +26,15 @@ class SummaryRequest(BaseModel):
     doc_id: str = Field(..., description="요약할 문서 ID(파일명, 확장자 제외)")
 
 
+class SummaryRow(BaseModel):
+    label: str
+    value: str
+
+
 class SummaryResponse(BaseModel):
     doc_id: str
-    summary: str
+    summary: str                 # 원본 텍스트(폴백/디버그용)
+    rows: list[SummaryRow] = []  # 고정 스키마 표(항목·내용)
     sources: list[SourceItem]
 
 

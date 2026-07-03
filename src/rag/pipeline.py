@@ -159,18 +159,27 @@ class RAGPipeline:
         return RAGAnswer(answer=answer, sources=chunks)
 
     # ---------- 요약 ----------
-    def summarize(self, doc_id: str, max_chunks: int = 12) -> RAGAnswer:
-        """특정 문서를 요약. doc_id 메타데이터로 필터링하여 청크를 모은다."""
+    def summarize(self, doc_id: str, max_chunks: int = 12, structured: bool = False) -> RAGAnswer:
+        """특정 문서를 요약. doc_id 메타데이터로 필터링하여 청크를 모은다.
+
+        structured=True 면 고정 스키마 JSON(표용)으로, 아니면 항목형 줄글로 생성.
+        """
         chunks = self._store.query(
             self._embedder.embed_query("사업 개요 예산 기간 요구사항 자격 제출"),
             top_k=max_chunks,
             where={"doc_id": doc_id},
         )
         context = self._format_context(chunks)
-        answer = self._llm.generate(
-            prompts.SUMMARY_SYSTEM_PROMPT,
-            prompts.build_summary_user_prompt(context),
-        )
+        if structured:
+            answer = self._llm.generate(
+                prompts.SUMMARY_TABLE_SYSTEM_PROMPT,
+                prompts.build_summary_table_user_prompt(context),
+            )
+        else:
+            answer = self._llm.generate(
+                prompts.SUMMARY_SYSTEM_PROMPT,
+                prompts.build_summary_user_prompt(context),
+            )
         return RAGAnswer(answer=answer, sources=chunks)
 
 

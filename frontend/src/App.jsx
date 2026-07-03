@@ -75,7 +75,7 @@ export default function App() {
         body: JSON.stringify({ doc_id: docId }),
       });
       const j = await r.json();
-      setSummaries((s) => ({ ...s, [docId]: { loading: false, text: j.summary } }));
+      setSummaries((s) => ({ ...s, [docId]: { loading: false, rows: j.rows, text: j.summary } }));
     } catch (e) {
       setSummaries((s) => ({ ...s, [docId]: { loading: false, text: "요약 실패: " + e.message } }));
     }
@@ -135,8 +135,21 @@ export default function App() {
                 >
                   {summaries[it.doc_id]?.loading ? "AI 요약 생성 중…" : "📄 AI 요약"}
                 </button>
-                {summaries[it.doc_id]?.text && (
-                  <pre className="ai-summary">{summaries[it.doc_id].text}</pre>
+                {summaries[it.doc_id]?.rows?.length > 0 ? (
+                  <table className="ai-summary-table">
+                    <tbody>
+                      {summaries[it.doc_id].rows.map((row) => (
+                        <tr key={row.label}>
+                          <th>{row.label}</th>
+                          <td>{row.value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  summaries[it.doc_id]?.text && (
+                    <pre className="ai-summary">{summaries[it.doc_id].text}</pre>
+                  )
                 )}
               </li>
             ))}
