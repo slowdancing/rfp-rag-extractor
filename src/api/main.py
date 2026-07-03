@@ -82,12 +82,31 @@ def documents(
     return DocumentList(total=len(docs), items=[DocumentItem(**d) for d in docs[:limit]])
 
 
+def _local_has_match(llm, query: str, cand: list[dict]) -> bool:
+    """로컬 후보 중 사용자 요구에 '실제로' 부합하는 게 있는지 LLM으로 판정.
+
+    RRF 점수는 절대 관련도가 아니라 판정에 못 쓰므로(1위도 ~0.03), 의미 기반으로 LLM에 물음.
+    판정 실패 시 True(로컬 유지) — 나라장터 폴백 남발을 막기 위한 보수적 기본값.
+    """
+    if not cand:
+        return False
+    titles = "\n".join(f"- {c.get('title') or c.get('doc_id')}" for c in cand[:10])
+    sys = ("사용자 요구에 실제로 부합하는 공고가 후보에 하나라도 있으면 YES, "
+           "전혀 없으면 NO. 오직 YES 또는 NO만 출력.")
+    user = f"[사용자 요구]\n{query}\n\n[후보 공고]\n{titles}\n\nYES 또는 NO:"
+    try:
+        ans = llm.generate(sys, user).strip().upper()
+        return not ans.startswith("N")
+    except Exception:  # noqa: BLE001
+        return True
+
+
 @app.post("/recommend", response_model=DocumentList)
 def recommend(req: RecommendRequest) -> DocumentList:
     """고객사 역량/요구(profile)로 적합 RFP 추천.
 
-    흐름: 질의 재작성(recall) → 하이브리드로 후보 다수 → 문서 단위 집계
-         → 메타필터 → (옵션) LLM 재랭킹(포함/제외 조건까지 반영) → 상위 top_k.
+    흐름: 질의 재작성(recall) → 하이브리드로 후보 다수 → 문서 단위 집계 → 메타필터
+         → (적합 공고 없으면 나라장터 실시간 폴백) → (옵션) LLM 재랭킹 → 상위 top_k.
     """
     from src.catalog import get_doc
     from src.rag.rerank import rerank
@@ -116,6 +135,16 @@ def recommend(req: RecommendRequest) -> DocumentList:
         cand, budget_min=req.budget_min, budget_max=req.budget_max,
         org=req.org, deadline_before=req.deadline_before,
     )
+
+    # 3-1) 로컬에 적합 공고가 없으면 → 나라장터 실시간 검색으로 폴백 (옵트인)
+    settings = get_settings()
+    if settings.nara_fallback and settings.nara_api_key and \
+            not _local_has_match(pipe._llm, req.profile, cand):
+        from src.nara import search_bids
+        ext = search_bids(search_q or req.profile, settings.nara_api_key,
+                          days=settings.nara_search_days, rows=req.top_k)
+        if ext:
+            return DocumentList(total=len(ext), items=[DocumentItem(**e) for e in ext])
 
     # 4) LLM 재랭킹(요구·조건 반영) 또는 점수순
     if req.rerank and cand:

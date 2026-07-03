@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     retrieval_mode: str = "hybrid"   # "dense" | "hybrid"
     chunks_path: str = "data/processed/chunks.csv"
 
+    # 나라장터(조달청) 실시간 폴백 — 로컬 DB에 적합 공고가 없을 때 외부 API 조회
+    nara_fallback: bool = False          # True 이고 키가 있어야 동작(옵트인)
+    nara_api_key: str = ""               # data.go.kr 서비스키(디코딩 키 권장)
+    nara_search_days: int = 30           # 최근 N일 공고 검색
+
     # Paths
     data_raw_dir: str = "./data/raw"
     data_metadata_dir: str = "./data/metadata"

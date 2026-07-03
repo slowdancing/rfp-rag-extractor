@@ -42,6 +42,8 @@ class DocumentItem(BaseModel):
     filetype: str | None = None
     summary: str | None = None
     score: float | None = None   # 추천 시 관련도 점수
+    link: str | None = None      # 외부(나라장터) 공고 상세 URL
+    source: str | None = None    # "나라장터" 등 출처(로컬 DB면 None)
 
 
 class DocumentList(BaseModel):
