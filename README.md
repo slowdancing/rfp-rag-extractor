@@ -38,6 +38,19 @@
 
 ---
 
+## 웹 기능 (FastAPI API)
+
+| 엔드포인트 | 기능 |
+|-----------|------|
+| `POST /recommend` | 고객 프로필 → 적합 RFP 추천(재작성+하이브리드+LLM 재랭킹). 적합 공고 없으면 **나라장터 실시간 폴백**(옵트인) |
+| `POST /eligibility` | RFP 입찰참가자격 vs **회사 프로필** 대조 → 적격/부적격/확인필요 + 항목별 O/X/? |
+| `POST /summarize` | 문서를 **고정 스키마 표**(사업명·예산·기간·자격·평가 등 10항목)로 요약 |
+| `POST /ask` | 문서 근거 질의응답(+출처) |
+| `GET /documents` | 메타데이터 필터 목록(예산·기관·마감·키워드, LLM 미사용) |
+
+- 프론트(`frontend/`, React): 추천·필터·회사프로필·AI요약(표)·적격성 판정 화면.
+- 표시 관련도는 **코사인 유사도(%)** (RRF는 순위용, 절대값이 작아 UI엔 코사인 사용).
+
 ## 폴더 구조
 
 ```
@@ -76,6 +89,7 @@ rfp-rag-extractor/
 | `python -m scripts.compare_embeddings <모델...>` | 임베딩 모델 비교 |
 | `python -m scripts.compare_llms <모델...> [N]` | LLM 비교(정확도·응답시간, `openai:` 접두사로 OpenAI 대비) |
 | `python -m scripts.compare_llms_judge` | 서술형 답변품질 LLM-judge 교차검증 |
+| `python -m scripts.test_nara "<키워드>"` | 나라장터 API 연동 단독 테스트(키 필요) |
 | `python -m scripts.make_goldenset` | 메타데이터 골든셋 초안 |
 | `python -m scripts.make_content_goldenset` | 내용형 골든셋 초안(LLM) |
 | `python -m scripts.exp_chunk_size` | 청크 크기 실험 |
