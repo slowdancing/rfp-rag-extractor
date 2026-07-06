@@ -91,3 +91,4 @@ class EligibilityResponse(BaseModel):
     summary: str                # 한 줄 종합
     items: list[EligibilityItem]
     sources: list[SourceItem]
+    raw: str = ""               # (진단용) LLM 원본 출력

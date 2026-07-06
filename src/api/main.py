@@ -181,11 +181,26 @@ def _company_text(req: EligibilityRequest) -> str:
     return body or "(회사 정보가 입력되지 않음)"
 
 
-def _parse_eligibility(text: str) -> tuple[str, str, list[EligibilityItem]]:
-    """'판정 | 요건 | 사유' 줄 형식을 파싱 → (verdict, summary, items).
+def _detect_status(seg: str):
+    """짧은 셀에서 O/X/? 판정 감지(기호·한국어 표현 모두)."""
+    s = seg.upper()
+    if "X" in s or "미충족" in seg or "부적" in seg or "불충족" in seg or "❌" in seg:
+        return "X"
+    if "?" in seg or "확인" in seg or "불가" in seg or "⚠" in seg or "미상" in seg:
+        return "?"
+    if "O" in s or "충족" in seg or "✅" in seg or "가능" in seg or "적격" in seg:
+        return "O"
+    return None
 
-    EXAONE가 JSON을 자주 이탈해, 줄 형식이 훨씬 안정적. verdict는 status로 결정론적 산정.
+
+def _parse_eligibility(text: str) -> tuple[str, str, list[EligibilityItem]]:
+    """요건별 판정 줄을 파싱 → (verdict, summary, items). 여러 형식 관대하게 허용.
+
+    형식이 '판정 | 요건 | 사유' 뿐 아니라 상태가 어느 셀에 있든, 구분자가 |/—/-든 흡수.
+    EXAONE의 형식 이탈에 강건. verdict는 status로 결정론적 산정.
     """
+    import re
+
     items: list[EligibilityItem] = []
     summary = ""
     for line in text.splitlines():
@@ -195,18 +210,29 @@ def _parse_eligibility(text: str) -> tuple[str, str, list[EligibilityItem]]:
         if line.startswith("요약") and ":" in line:
             summary = line.split(":", 1)[1].strip()
             continue
-        if "|" not in line:
+        cells = re.split(r"\s*\|\s*", line)
+        if len(cells) < 2:
+            cells = re.split(r"\s*[—–]\s*", line)     # em/en dash
+        if len(cells) < 2:
+            cells = re.split(r"\s+-\s+", line)          # 공백-공백
+        if len(cells) < 2:
             continue
-        parts = [p.strip() for p in line.split("|")]
-        if len(parts) < 2:
+        cells = [c.strip() for c in cells if c.strip()]
+        # 상태 셀 찾기(짧고 O/X/? 포함). 없으면 첫 셀로.
+        st, st_idx = None, 0
+        for idx, c in enumerate(cells):
+            if len(c) <= 8 and _detect_status(c):
+                st, st_idx = _detect_status(c), idx
+                break
+        if not st:
+            st = _detect_status(cells[0])
+        others = [c for i, c in enumerate(cells) if i != st_idx]
+        if not st or not others:
             continue
-        p0 = parts[0].upper()
-        st = "X" if "X" in p0 else ("O" if "O" in p0 else ("?" if "?" in p0 else None))
-        req = parts[1].strip()
-        reason = parts[2].strip() if len(parts) >= 3 else ""
-        if st and req and req != "요건":  # 헤더 줄 제외
-            items.append(EligibilityItem(requirement=req, status=st, reason=reason))
-    # 항목을 하나도 못 뽑았으면(추출 실패) 섣불리 '적격'으로 보지 말고 '확인필요'.
+        req = others[0]
+        reason = others[1] if len(others) > 1 else ""
+        if req and req not in ("요건", "판정", "사유"):
+            items.append(EligibilityItem(requirement=req[:140], status=st, reason=reason[:220]))
     if not items:
         return ("확인필요",
                 "자격 요건을 자동으로 추출하지 못했어요. 원문을 확인하거나 추가 정보로 재판정하세요.",
@@ -226,7 +252,7 @@ def eligibility(req: EligibilityRequest) -> EligibilityResponse:
     verdict, summary, items = _parse_eligibility(ans.answer)
     return EligibilityResponse(
         doc_id=req.doc_id, verdict=verdict, summary=summary,
-        items=items, sources=_to_source_items(ans),
+        items=items, sources=_to_source_items(ans), raw=ans.answer,
     )
 
 
