@@ -121,7 +121,7 @@ def recommend(req: RecommendRequest) -> DocumentList:
     try:
         # 1) 재작성된 질의로 후보 recall 높이기 + 넉넉히 검색
         search_q = pipe.rewrite_query(req.profile)
-        chunks = pipe.retrieve(search_q, top_k=40)
+        chunks = pipe.retrieve(search_q, top_k=60)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -182,36 +182,38 @@ def _company_text(req: EligibilityRequest) -> str:
 
 
 def _parse_eligibility(text: str) -> tuple[str, str, list[EligibilityItem]]:
-    """LLM JSON → (verdict, summary, items). verdict는 항목 status로 결정론적 산정."""
-    import json
-    import re
+    """'판정 | 요건 | 사유' 줄 형식을 파싱 → (verdict, summary, items).
 
-    m = re.search(r"\{.*\}", text, re.DOTALL)
-    data = {}
-    if m:
-        try:
-            data = json.loads(m.group())
-        except Exception:  # noqa: BLE001
-            data = {}
-    items = []
-    for it in (data.get("items") or []):
-        st = str(it.get("status", "?")).upper().strip()
-        st = st if st in ("O", "X", "?") else "?"
-        items.append(EligibilityItem(
-            requirement=str(it.get("requirement", "")).strip(),
-            status=st,
-            reason=str(it.get("reason", "")).strip(),
-        ))
-    # 항목을 하나도 못 뽑았으면(추출/파싱 실패) 섣불리 '적격'으로 보지 말고 '확인필요'.
+    EXAONE가 JSON을 자주 이탈해, 줄 형식이 훨씬 안정적. verdict는 status로 결정론적 산정.
+    """
+    items: list[EligibilityItem] = []
+    summary = ""
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("요약") and ":" in line:
+            summary = line.split(":", 1)[1].strip()
+            continue
+        if "|" not in line:
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) < 2:
+            continue
+        p0 = parts[0].upper()
+        st = "X" if "X" in p0 else ("O" if "O" in p0 else ("?" if "?" in p0 else None))
+        req = parts[1].strip()
+        reason = parts[2].strip() if len(parts) >= 3 else ""
+        if st and req and req != "요건":  # 헤더 줄 제외
+            items.append(EligibilityItem(requirement=req, status=st, reason=reason))
+    # 항목을 하나도 못 뽑았으면(추출 실패) 섣불리 '적격'으로 보지 말고 '확인필요'.
     if not items:
         return ("확인필요",
                 "자격 요건을 자동으로 추출하지 못했어요. 원문을 확인하거나 추가 정보로 재판정하세요.",
                 items)
-    # 1차 판정: 명백한 미충족(X)만 부적격. '확인필요(?)'는 판정을 막지 않고 별도 안내로 뺀다.
     statuses = {i.status for i in items}
     verdict = "부적격" if "X" in statuses else "적격"
-    summary = str(data.get("summary", "")).strip() or "기본 정보 기준 1차 판정입니다."
-    return verdict, summary, items
+    return verdict, summary or "기본 정보 기준 1차 판정입니다.", items
 
 
 @app.post("/eligibility", response_model=EligibilityResponse)
