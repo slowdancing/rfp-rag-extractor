@@ -19,9 +19,9 @@ export default function App() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("");
-  const [summaries, setSummaries] = useState({}); // doc_id -> {loading, text}
-  const [company, setCompany] = useState(""); // 회사 소개(자연어)
-  const [elig, setElig] = useState({}); // doc_id -> {loading, verdict, summary, items}
+  const [summaries, setSummaries] = useState({});
+  const [company, setCompany] = useState("");
+  const [elig, setElig] = useState({});
 
   async function recommend() {
     if (!profile.trim()) return alert("고객사 역량/관심 분야를 입력하세요.");
@@ -52,7 +52,7 @@ export default function App() {
 
   async function listDocs() {
     setLoading(true);
-    setMode("필터 목록");
+    setMode("빠른 필터");
     try {
       const p = new URLSearchParams();
       if (q) p.set("q", q);
@@ -103,69 +103,117 @@ export default function App() {
 
   return (
     <div className="app">
-      <header>
-        <h1>📋 입찰메이트 — RFP 추천·검색</h1>
-        <p>고객사에 맞는 입찰 공고(RFP)를 찾고, 필요하면 AI 요약으로 핵심만 확인하세요.</p>
+      <header className="topbar">
+        <div className="brand">
+          <span className="logo">📋</span>
+          <div>
+            <h1>입찰메이트</h1>
+            <p>RFP 추천 · 요약 · 적격성 판정</p>
+          </div>
+        </div>
       </header>
 
-      <div className="layout">
-        <aside className="filters">
-          <h3>🔎 필터</h3>
-          <label>키워드<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="예: 학사, 버스" /></label>
-          <label>예산 최소(원)<input type="number" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} /></label>
-          <label>예산 최대(원)<input type="number" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} /></label>
-          <label>발주기관<input value={org} onChange={(e) => setOrg(e.target.value)} placeholder="예: 대학교" /></label>
-          <label>마감 이전<input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label>
-          <button onClick={listDocs}>필터로 목록 보기</button>
-
-          <h3 style={{ marginTop: 20 }}>🏢 회사 프로필</h3>
-          <p className="muted" style={{ margin: "0 0 8px" }}>적격성 판정에 사용. 자연어로 자유롭게 적으세요.</p>
+      {/* ── AI 추천 (LLM이 의미를 이해해 검색) ── */}
+      <section className="hero">
+        <div className="hero-label">
+          <span className="chip chip-ai">✨ AI</span>
+          <h2>AI 맞춤 추천</h2>
+        </div>
+        <p className="hero-hint">
+          고객사 역량·관심을 <b>자연어로</b> 적으면, AI가 <b>의미를 이해</b>해 맞는 공고를 찾아 재정렬합니다.
+          (단순 키워드 매칭이 아니라 LLM 검색)
+        </p>
+        <div className="hero-input">
           <textarea
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            placeholder="예) 서울 소재 중소기업. 공공 SI·대학 학사시스템 구축 3건, GS인증 1등급 보유. 컨소시엄 가능."
-            style={{ minHeight: 90 }}
+            value={profile}
+            onChange={(e) => setProfile(e.target.value)}
+            placeholder="예) 공공기관 대상 전자조달·학사정보시스템 구축 경험이 많은 SI 기업. 클라우드 마이그레이션 강점."
           />
-        </aside>
+          <button className="btn btn-ai-solid" onClick={recommend} disabled={loading}>
+            {loading && mode === "맞춤 추천" ? "AI가 찾는 중…" : "✨ AI로 추천받기"}
+          </button>
+        </div>
+      </section>
 
-        <main>
-          <div className="recommend-box">
-            <textarea
-              value={profile}
-              onChange={(e) => setProfile(e.target.value)}
-              placeholder="고객사 역량·관심 분야 입력. 예) 대학 학사정보시스템 구축 전문, 클라우드 마이그레이션 경험 보유"
-            />
-            <button className="primary" onClick={recommend}>🎯 맞춤 RFP 추천</button>
+      <div className="layout">
+        <aside className="side">
+          <div className="panel">
+            <div className="panel-head">
+              <h3>🔎 빠른 필터</h3>
+              <span className="chip chip-plain">즉시 · AI 미사용</span>
+            </div>
+            <p className="hint">정확한 조건으로 바로 거릅니다.</p>
+            <label>키워드<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="예: 학사, 버스" /></label>
+            <div className="row2">
+              <label>예산 최소<input type="number" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} placeholder="원" /></label>
+              <label>예산 최대<input type="number" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} placeholder="원" /></label>
+            </div>
+            <label>발주기관<input value={org} onChange={(e) => setOrg(e.target.value)} placeholder="예: 대학교" /></label>
+            <label>마감 이전<input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label>
+            <button className="btn btn-plain" onClick={listDocs}>필터로 목록 보기</button>
           </div>
 
-          {loading && <p className="muted">불러오는 중…</p>}
-          {!loading && mode && <p className="muted">{mode} · {total}건</p>}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>🏢 회사 프로필</h3>
+              <span className="chip chip-ai">적격성용</span>
+            </div>
+            <p className="hint">적격성 판정에 사용. 자연어로 자유롭게.</p>
+            <textarea
+              className="company-input"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder="예) 서울 소재 중소기업. 공공 SI·학사시스템 구축 3건, GS인증 1등급. 컨소시엄 가능."
+            />
+          </div>
+        </aside>
+
+        <main className="results">
+          {mode && (
+            <div className="results-bar">
+              <span className={"mode-tag " + (mode === "맞춤 추천" ? "mode-ai" : "mode-plain")}>
+                {mode === "맞춤 추천" ? "✨ AI 추천" : "🔎 필터"}
+              </span>
+              <span className="count">{loading ? "불러오는 중…" : `${total}건`}</span>
+            </div>
+          )}
+          {!mode && !loading && (
+            <div className="empty-hint">위에서 <b>AI 추천</b>을 받거나, 왼쪽 <b>빠른 필터</b>로 시작하세요.</div>
+          )}
 
           <ul className="cards">
             {items.map((it) => (
               <li key={it.doc_id} className="card">
-                <div className="card-head">
-                  <h4>{it.title || it.doc_id}</h4>
-                  {it.score != null && (
-                    <span className="score">관련도 {Math.round(Math.max(0, it.score) * 100)}%</span>
-                  )}
-                  {it.source && <span className="score">{it.source}</span>}
+                <div className="card-top">
+                  <h4 className="card-title">{it.title || it.doc_id}</h4>
+                  <div className="badges">
+                    {it.source && <span className="badge badge-src">🌐 {it.source}</span>}
+                    {it.score != null && (
+                      <span className="badge badge-score">관련도 {Math.round(Math.max(0, it.score) * 100)}%</span>
+                    )}
+                  </div>
                 </div>
+
                 <div className="meta">
                   <span>🏛 {it.org || "-"}</span>
                   <span>💰 {won(it.budget)}</span>
-                  <span>📅 마감 {it.deadline || "-"}</span>
+                  <span>📅 {it.deadline || "-"}</span>
                 </div>
-                {it.summary && <p className="summary-line">{it.summary.slice(0, 130)}…</p>}
-                <button
-                  className="ai-btn"
-                  onClick={() => summarize(it.doc_id)}
-                  disabled={summaries[it.doc_id]?.loading}
-                >
-                  {summaries[it.doc_id]?.loading ? "AI 요약 생성 중…" : "📄 AI 요약"}
-                </button>
+
+                {it.summary && <p className="snippet">{it.summary.slice(0, 130)}…</p>}
+                {it.link && <a className="ext-link" href={it.link} target="_blank" rel="noreferrer">공고 상세 ↗</a>}
+
+                <div className="card-actions">
+                  <button className="btn btn-ai" onClick={() => summarize(it.doc_id)} disabled={summaries[it.doc_id]?.loading}>
+                    {summaries[it.doc_id]?.loading ? "요약 중…" : "✨ AI 요약"}
+                  </button>
+                  <button className="btn btn-ai" onClick={() => checkEligibility(it.doc_id)} disabled={elig[it.doc_id]?.loading}>
+                    {elig[it.doc_id]?.loading ? "판정 중…" : "⚖️ 적격성 판정"}
+                  </button>
+                </div>
+
                 {summaries[it.doc_id]?.rows?.length > 0 ? (
-                  <table className="ai-summary-table">
+                  <table className="kv-table">
                     <tbody>
                       {summaries[it.doc_id].rows.map((row) => (
                         <tr key={row.label}>
@@ -176,29 +224,21 @@ export default function App() {
                     </tbody>
                   </table>
                 ) : (
-                  summaries[it.doc_id]?.text && (
-                    <pre className="ai-summary">{summaries[it.doc_id].text}</pre>
-                  )
+                  summaries[it.doc_id]?.text && <pre className="raw-summary">{summaries[it.doc_id].text}</pre>
                 )}
-                <button
-                  className="ai-btn"
-                  onClick={() => checkEligibility(it.doc_id)}
-                  disabled={elig[it.doc_id]?.loading}
-                >
-                  {elig[it.doc_id]?.loading ? "적격성 판정 중…" : "⚖️ 적격성 판정"}
-                </button>
+
                 {elig[it.doc_id]?.items && (
                   <div className="elig">
                     <div className={"elig-verdict " + (VERDICT_CLASS[elig[it.doc_id].verdict] || "")}>
-                      {elig[it.doc_id].verdict} — {elig[it.doc_id].summary}
+                      <b>{elig[it.doc_id].verdict}</b> — {elig[it.doc_id].summary}
                     </div>
                     {elig[it.doc_id].items.length > 0 && (
-                      <table className="ai-summary-table">
+                      <table className="kv-table elig-table">
                         <tbody>
                           {elig[it.doc_id].items.map((row, i) => (
                             <tr key={i}>
                               <th>{STATUS_ICON[row.status] || "⚠️"}</th>
-                              <td><b>{row.requirement}</b><br />{row.reason}</td>
+                              <td><b>{row.requirement}</b><br /><span className="reason">{row.reason}</span></td>
                             </tr>
                           ))}
                         </tbody>
@@ -206,16 +246,17 @@ export default function App() {
                     )}
                   </div>
                 )}
-                {elig[it.doc_id]?.error && <p className="muted">판정 실패: {elig[it.doc_id].error}</p>}
+                {elig[it.doc_id]?.error && <p className="err">판정 실패: {elig[it.doc_id].error}</p>}
               </li>
             ))}
           </ul>
+
           {!loading && mode && items.length === 0 && (
-            <p className="muted">
+            <div className="empty-result">
               {mode === "맞춤 추천"
-                ? "조건에 맞는 적합한 공고를 찾지 못했어요. (질문을 바꾸거나 나라장터 연동을 켜보세요)"
+                ? "조건에 맞는 적합한 공고를 찾지 못했어요. 질문을 바꾸거나 나라장터 연동을 켜보세요."
                 : "결과가 없습니다."}
-            </p>
+            </div>
           )}
         </main>
       </div>
