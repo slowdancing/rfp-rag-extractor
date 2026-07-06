@@ -155,6 +155,23 @@ sleep 6; curl -s localhost:8500/health # {"status":"ok"}
 
 ---
 
+## 5-1. 추가 트러블슈팅 (2026-07-03) — 외부배포·웹 연동·요약
+
+| 증상 | 원인 | 해결 |
+|------|------|------|
+| 밖에서 VM 모델 호출 불가 | Ollama가 127.0.0.1만 바인딩 + 방화벽이 8000/22만 허용 | GCP 방화벽에 API 포트(8501) **내 IP만** 개방 + `uvicorn --host 0.0.0.0` |
+| `git pull` 해도 코드 안 바뀜 | VM 실험산출물이 pull과 충돌해 pull 중단 → 옛 코드 유지 | `git fetch origin && git reset --hard origin/main` (gitignore된 .env·데이터는 보존) |
+| 새 코드 반영 안 됨(404·rows없음) | `pkill` 후에도 **옛 uvicorn이 안 죽어** 새 코드 미로딩 | `pkill -9 -f uvicorn` → `ps aux \| grep uvicorn` 비었는지 확인 → 포그라운드로 재기동해 에러 확인 |
+| 브라우저 결과가 VM curl과 다름 | 프론트가 **로컬 8000**(옛 백엔드) 호출 중 | `VITE_API=http://<VM외부IP>:8501 npm run dev` 로 VM 지정 + `Ctrl+Shift+R` |
+| PowerShell에서 `npm` 실행정책 경고로 프론트 안 뜸 | 스크립트 실행정책(Restricted) | `Set-ExecutionPolicy -Scope Process Bypass` 또는 **Git Bash** 사용 |
+| AI요약이 표 대신 줄글/JSON·헛소리 | EXAONE(7.8B)가 형식 이탈(중첩JSON·대화체), 온도 높음(0.8) | 프롬프트 '항목:값'+few-shot, **`OPENAI_TEMPERATURE=0.2`**, 파서 강건화 |
+| 긴 문서 요약에 핵심항목 빔 | 검색이 절차·자격 청크만 잡고 **사업개요 청크 놓침** | 사업명·기관·예산·마감은 **카탈로그 메타데이터로 직접 채움**(LLM 비의존) |
+
+> 교훈: **① 코드가 실제로 반영됐는지(git log + 프로세스 재시작 확인), ② 프론트가 어느 백엔드를 보는지(`VITE_API`)**
+> 이 둘만 확실히 하면 "왜 다르지?" 류 문제의 90%가 사라진다. LLM 형식 문제는 **온도↓ + few-shot + 규칙기반 보정**으로 대응.
+
+---
+
 ## 6. 외부에서 서비스 접근하기 (개념 + 우리 선택)
 
 우리 API는 VM의 `127.0.0.1:8500`(내부 전용)에 떠 있다. 외부에서 쓰려면 세 방법:
