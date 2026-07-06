@@ -19,6 +19,47 @@ function VerdictBadge({ verdict }) {
   return <span className={"grade " + g.cls}><b>{g.sym}</b> {verdict}</span>;
 }
 
+// 적격성 결과: 1차 판정(적격/부적격) + O/X 근거 + ⚠️ 추가 확인(?) 항목 + 2차 입력란
+function EligibilityResult({ data, docId, more, setMore, onRecheck }) {
+  const definitive = data.items.filter((x) => x.status !== "?");
+  const checks = data.items.filter((x) => x.status === "?");
+  return (
+    <div className="elig">
+      <div className="elig-verdict">
+        <VerdictBadge verdict={data.verdict} />
+        <span className="ev-summary">{data.summary}</span>
+      </div>
+      {definitive.length > 0 && (
+        <table className="kv-table elig-table">
+          <tbody>
+            {definitive.map((row, i) => (
+              <tr key={i}>
+                <th>{STATUS_ICON[row.status] || "•"}</th>
+                <td><b>{row.requirement}</b><br /><span className="reason">{row.reason}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {checks.length > 0 && (
+        <div className="elig-checks">
+          <div className="checks-head">⚠️ 추가 확인이 필요한 항목 ({checks.length})</div>
+          <ul className="checks-list">
+            {checks.map((c, i) => <li key={i}><b>{c.requirement}</b> — {c.reason}</li>)}
+          </ul>
+          <textarea
+            className="more-input"
+            placeholder="위 항목 관련 정보를 적고 재판정하세요. 예) 유사 실적 3건·GS인증 1등급 보유, 컨소시엄 가능"
+            value={more || ""}
+            onChange={(e) => setMore(e.target.value)}
+          />
+          <button className="btn btn-ai" onClick={() => onRecheck(docId, more)}>추가 정보로 재판정</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // 관련도(코사인)를 체스닷컴 스타일 등급으로 매핑
 function fitGrade(score) {
   const s = Math.max(0, score);
@@ -54,6 +95,7 @@ export default function App() {
   const [summaries, setSummaries] = useState({});
   const [company, setCompany] = useState("");
   const [elig, setElig] = useState({});
+  const [eligMore, setEligMore] = useState({}); // doc_id -> 2차 추가 정보
 
   async function recommend() {
     if (!profile.trim()) return alert("고객사 역량/관심 분야를 입력하세요.");
@@ -103,13 +145,15 @@ export default function App() {
     setLoading(false);
   }
 
-  async function checkEligibility(docId) {
+  async function checkEligibility(docId, extra = "") {
     setElig((s) => ({ ...s, [docId]: { loading: true } }));
     try {
+      const companyFull =
+        [company, extra && "추가 정보: " + extra].filter(Boolean).join("\n") || null;
       const r = await fetch(`${API}/eligibility`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ doc_id: docId, company: company || null }),
+        body: JSON.stringify({ doc_id: docId, company: companyFull }),
       });
       const j = await r.json();
       setElig((s) => ({ ...s, [docId]: { loading: false, ...j } }));
@@ -213,7 +257,7 @@ export default function App() {
           )}
 
           <ul className="cards">
-            {items.map((it) => (
+            {[...items].sort((a, b) => (b.score ?? -2) - (a.score ?? -2)).map((it) => (
               <li key={it.doc_id} className="card">
                 <div className="card-top">
                   <h4 className="card-title">{it.title || it.doc_id}</h4>
@@ -257,24 +301,13 @@ export default function App() {
                 )}
 
                 {elig[it.doc_id]?.items && (
-                  <div className="elig">
-                    <div className="elig-verdict">
-                      <VerdictBadge verdict={elig[it.doc_id].verdict} />
-                      <span className="ev-summary">{elig[it.doc_id].summary}</span>
-                    </div>
-                    {elig[it.doc_id].items.length > 0 && (
-                      <table className="kv-table elig-table">
-                        <tbody>
-                          {elig[it.doc_id].items.map((row, i) => (
-                            <tr key={i}>
-                              <th>{STATUS_ICON[row.status] || "⚠️"}</th>
-                              <td><b>{row.requirement}</b><br /><span className="reason">{row.reason}</span></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
+                  <EligibilityResult
+                    data={elig[it.doc_id]}
+                    docId={it.doc_id}
+                    more={eligMore[it.doc_id]}
+                    setMore={(v) => setEligMore((s) => ({ ...s, [it.doc_id]: v }))}
+                    onRecheck={checkEligibility}
+                  />
                 )}
                 {elig[it.doc_id]?.error && <p className="err">판정 실패: {elig[it.doc_id].error}</p>}
               </li>

@@ -159,6 +159,14 @@ body { background: var(--bg); color: var(--ink); }
 .ev-summary { color: var(--ink-2); }
 .err { color: var(--no); font-size: 12.5px; margin-top: 8px; }
 
+/* 추가 확인 필요(?) 항목 + 2차 입력 */
+.elig-checks { margin-top: 11px; padding: 12px; background: var(--maybe-bg); border: 1px solid var(--maybe-line); border-radius: 11px; }
+.checks-head { font-size: 12.5px; font-weight: 700; color: var(--maybe); margin-bottom: 7px; }
+.checks-list { margin: 0 0 10px; padding-left: 18px; font-size: 12px; color: var(--ink-2); line-height: 1.6; }
+.checks-list b { color: var(--ink); }
+.more-input { width: 100%; min-height: 54px; resize: vertical; padding: 9px 11px; border: 1px solid var(--maybe-line); border-radius: 9px; font: inherit; font-size: 12.5px; background: var(--surface); color: var(--ink); outline: none; margin-bottom: 8px; }
+.more-input:focus { border-color: var(--maybe); box-shadow: 0 0 0 3px rgba(217, 118, 10, .12); }
+
 /* ── Responsive ── */
 @media (max-width: 820px) {
   .app { padding: 20px 14px 56px; }
