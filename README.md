@@ -51,26 +51,96 @@
 - 프론트(`frontend/`, React): 추천·필터·회사프로필·AI요약(표)·적격성 판정 화면.
 - 표시 관련도는 **코사인 유사도(%)** (RRF는 순위용, 절대값이 작아 UI엔 코사인 사용).
 
-## 폴더 구조
+## 프로젝트 구조 (상세)
+
+### 설계 한눈에
+- **`src/`** = 라이브러리(핵심 로직). **`scripts/`** = 그 라이브러리를 호출하는 실행 진입점(CLI).
+- **3단 추상화**가 세 계층(embeddings·llm·vectorstore)에 동일하게 적용됨:
+  `base.py`(규격/ABC) + `구현체`(OpenAI/HF) + `__init__.py`(팩토리 `build_*()`).
+  → 파이프라인은 규격에만 의존, `.env`로 구현체 교체.
+- **RAG 파이프라인**(`src/rag/pipeline.py`)이 임베더·벡터스토어·LLM을 조립해 검색→생성을 오케스트레이션.
+- **FastAPI**(`src/api/`)가 그 파이프라인을 HTTP로 노출, **React**(`frontend/`)가 호출.
 
 ```
 rfp-rag-extractor/
-├── src/
-│   ├── config.py            # .env 설정 로더 (provider·모델·base_url)
-│   ├── dataset_utill/       # 데이터 파이프라인 (추출·정제·청킹·로더)
-│   ├── embeddings/          # 임베딩 추상화 + OpenAI/HF 구현 + 팩토리
-│   ├── vectorstore/         # 벡터 저장·검색 + Chroma (모델별 컬렉션 분리)
-│   ├── llm/                 # LLM 추상화 + OpenAI/HF 구현 (base_url=Ollama 지원)
-│   ├── rag/                 # pipeline(조립) + hybrid(BM25+dense) + prompts
-│   ├── api/                 # FastAPI 엔드포인트
-│   └── evaluation/          # 검색/생성 평가 로직
-├── scripts/                 # 실행 진입점 (아래 표)
-├── data/                    # raw·metadata·processed (gitignore) + eval(골든셋)
-├── results/                 # 실험 결과 (md)
-├── docs/                    # architecture·gcp_setup·ollama_setup
-├── requirements.txt         # 기본
-├── requirements-run.txt     # 경량(Ollama 경로, torch 불필요)
-└── requirements-hf.txt      # HF 직접(transformers)
+├── src/                          # ── 핵심 라이브러리 ──
+│   ├── config.py                 # .env 설정 로더(pydantic-settings): provider·모델·base_url·temperature·nara·top_k…
+│   ├── catalog.py                # 문서 메타데이터 카탈로그: load_catalog/filter_docs/get_doc (corpus_clean.csv 기반, LLM 미사용·빠름)
+│   ├── nara.py                   # 나라장터(조달청) 입찰공고 검색 API 클라이언트 search_bids (urllib, 폴백용)
+│   │
+│   ├── dataset_utill/            # ▸ 데이터 파이프라인 (zip → chunks.csv)
+│   │   ├── extract.py            #   zip 해제 → data/raw+metadata (cp437→cp949 한글 파일명 복원)
+│   │   ├── text_extract.py       #   PDF/HWP 본문 텍스트 추출
+│   │   ├── clean.py              #   정제: PUA(U+E000~F8FF)·U+FFFD 등 깨진 문자 제거
+│   │   ├── preprocess.py         #   build_corpus: 짧은 문서 원본 재추출 보강 + 정제 → corpus_clean.csv
+│   │   ├── chunker.py            #   토큰 기반 청킹(_split_by_tokens, U+FFFD 경계 정제)
+│   │   ├── chunk_corpus.py       #   build_chunks: .env(CHUNK_SIZE/OVERLAP) 적용 → chunks.csv
+│   │   └── loader.py             #   원문/메타 로더(RawDocument), pypdf 지연 import
+│   │
+│   ├── embeddings/               # ▸ 임베딩 계층 (3단 추상화)
+│   │   ├── base.py               #   BaseEmbedder(ABC): embed_documents/embed_query 규격
+│   │   ├── openai_embedder.py    #   OpenAI 호환 구현(base_url로 Ollama bge-m3도 이 클래스로)
+│   │   ├── hf_embedder.py        #   sentence-transformers 직접 로딩(대안 경로·현재 배포 미사용)
+│   │   └── __init__.py           #   build_embedder() 팩토리
+│   │
+│   ├── vectorstore/              # ▸ 벡터 저장·검색 계층
+│   │   ├── base.py               #   BaseVectorStore(ABC) + RetrievedChunk(text·metadata·score)
+│   │   ├── chroma_store.py       #   ChromaDB 어댑터(cosine, distance→similarity 변환)
+│   │   └── __init__.py           #   build_vector_store() + collection_name()(임베딩 모델명 접미사로 컬렉션 분리)
+│   │
+│   ├── llm/                      # ▸ 생성 LLM 계층 (3단 추상화)
+│   │   ├── base.py               #   BaseLLM(ABC): generate(system, user) 규격
+│   │   ├── openai_llm.py         #   OpenAI 호환 구현(base_url=Ollama로 EXAONE, temperature 옵션)
+│   │   ├── hf_llm.py             #   transformers 직접 로딩(대안 경로·현재 배포 미사용)
+│   │   └── __init__.py           #   build_llm() 팩토리
+│   │
+│   ├── rag/                      # ▸ RAG 오케스트레이션 + 도메인 프롬프트
+│   │   ├── pipeline.py           #   RAGPipeline: index_chunks/rewrite_query/retrieve/ask/summarize/assess_eligibility + build_pipeline()
+│   │   ├── hybrid.py             #   HybridRetriever: BM25(문자 바이그램)+dense를 RRF로 융합, tokenize()
+│   │   ├── rerank.py             #   LLM 재랭킹(포함/제외 조건 반영해 후보 재정렬)
+│   │   └── prompts.py            #   QA·요약(표)·적격성·질의재작성 프롬프트 + SUMMARY_FIELDS(고정 10항목)
+│   │
+│   ├── api/                      # ▸ 웹 백엔드
+│   │   ├── main.py               #   FastAPI: /health·/documents·/recommend·/eligibility·/ask·/summarize + 파싱·게이트 헬퍼
+│   │   └── schemas.py            #   요청/응답 pydantic 모델(DocumentItem·SummaryRow·EligibilityItem…)
+│   │
+│   └── evaluation/               # ▸ 평가 로직
+│       └── evaluator.py          #   EvalItem·load_eval_set + 검색(Hit@k·MRR)·생성(LLM-judge) 지표
+│
+├── scripts/                      # ── 실행 진입점(CLI) ── (아래 "실행 스크립트" 표)
+│   ├── ingest.py  ask.py         #   적재 / 질의응답
+│   ├── eval_retrieval.py  eval_generation.py  evaluate.py   #   평가
+│   ├── compare_embeddings.py  compare_llms.py  compare_llms_judge.py  #   모델 비교
+│   ├── make_goldenset.py  make_content_goldenset.py  exp_chunk_size.py  #   골든셋·실험
+│   ├── test_nara.py              #   나라장터 API 단독 테스트
+│   └── setup_gcp.sh              #   (참고) VM 셋업 스크립트
+│
+├── frontend/                     # ── React(Vite) 웹 UI ──
+│   ├── src/App.jsx               #   화면: 맞춤추천·필터·회사프로필·AI요약(표)·적격성 판정 (API 주소는 VITE_API)
+│   ├── src/App.css  index.css  main.jsx  index.html
+│   └── vite.config.js  package.json
+│
+├── notebooks/                    # 01_eda.ipynb(EDA) · demo.ipynb(VM 내부 라이브 데모)
+├── data/                         # raw·metadata·processed(모두 gitignore) + eval/(골든셋 jsonl은 추적)
+├── results/                      # 실험 결과(.md): compare_*·eval_*·model_decision·retrieval_experiment
+├── docs/                         # architecture·gcp_setup·ollama_setup·presentation
+├── tests/                        # test_smoke.py
+├── .env.example / .env.ollama.example / .env.hf.example   # 백엔드별 설정 템플릿
+├── requirements.txt              # 기본(전체)
+├── requirements-run.txt          # 경량(Ollama 경로, torch 불필요)
+├── requirements-hf.txt           # HF 직접 로딩(transformers)
+└── 진행현황.md                    # 진행 상황 트래커
+```
+
+### 요청 한 건이 흐르는 경로 (예: 맞춤추천)
+```
+[React App.jsx] fetch → [api/main.py /recommend]
+   → pipeline.rewrite_query() (프롬프트→LLM)         # 자연어→키워드
+   → pipeline.retrieve() = rag/hybrid.py             # bge-m3 dense + BM25 → RRF
+   → catalog.get_doc()/filter_docs()                 # 문서 집계·메타필터
+   → (적합 없으면) 관련성 게이트 → nara.search_bids() # 폴백
+   → rag/rerank.py (LLM 재랭킹)                       # 포함/제외 조건
+   → schemas.DocumentList 응답
 ```
 
 ---
