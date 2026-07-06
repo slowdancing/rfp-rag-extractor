@@ -121,13 +121,12 @@ export default function App() {
         </div>
         <p className="hero-hint">
           고객사 역량·관심을 <b>자연어로</b> 적으면, AI가 <b>의미를 이해</b>해 맞는 공고를 찾아 재정렬합니다.
-          (단순 키워드 매칭이 아니라 LLM 검색)
         </p>
         <div className="hero-input">
           <textarea
             value={profile}
             onChange={(e) => setProfile(e.target.value)}
-            placeholder="예) 공공기관 대상 전자조달·학사정보시스템 구축 경험이 많은 SI 기업. 클라우드 마이그레이션 강점."
+            placeholder="예) 대학 학사·포털 시스템 구축을 많이 해봤는데, 우리 회사에 맞는 공고를 찾아줘."
           />
           <button className="btn btn-ai-solid" onClick={recommend} disabled={loading}>
             {loading && mode === "맞춤 추천" ? (<><span className="spinner" /> AI가 찾는 중…</>) : "✨ AI로 추천받기"}
