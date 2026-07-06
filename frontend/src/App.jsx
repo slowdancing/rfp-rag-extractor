@@ -23,6 +23,7 @@ function VerdictBadge({ verdict }) {
 function EligibilityResult({ data, docId, more, setMore, onRecheck }) {
   const definitive = data.items.filter((x) => x.status !== "?");
   const checks = data.items.filter((x) => x.status === "?");
+  const showMore = checks.length > 0 || data.items.length === 0; // 추가확인 또는 추출실패 시 재판정 유도
   return (
     <div className="elig">
       <div className="elig-verdict">
@@ -41,12 +42,16 @@ function EligibilityResult({ data, docId, more, setMore, onRecheck }) {
           </tbody>
         </table>
       )}
-      {checks.length > 0 && (
+      {showMore && (
         <div className="elig-checks">
-          <div className="checks-head">⚠️ 추가 확인이 필요한 항목 ({checks.length})</div>
-          <ul className="checks-list">
-            {checks.map((c, i) => <li key={i}><b>{c.requirement}</b> — {c.reason}</li>)}
-          </ul>
+          {checks.length > 0 && (
+            <>
+              <div className="checks-head">⚠️ 추가 확인이 필요한 항목 ({checks.length})</div>
+              <ul className="checks-list">
+                {checks.map((c, i) => <li key={i}><b>{c.requirement}</b> — {c.reason}</li>)}
+              </ul>
+            </>
+          )}
           <textarea
             className="more-input"
             placeholder="위 항목 관련 정보를 적고 재판정하세요. 예) 유사 실적 3건·GS인증 1등급 보유, 컨소시엄 가능"

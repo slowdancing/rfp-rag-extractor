@@ -202,6 +202,11 @@ def _parse_eligibility(text: str) -> tuple[str, str, list[EligibilityItem]]:
             status=st,
             reason=str(it.get("reason", "")).strip(),
         ))
+    # 항목을 하나도 못 뽑았으면(추출/파싱 실패) 섣불리 '적격'으로 보지 말고 '확인필요'.
+    if not items:
+        return ("확인필요",
+                "자격 요건을 자동으로 추출하지 못했어요. 원문을 확인하거나 추가 정보로 재판정하세요.",
+                items)
     # 1차 판정: 명백한 미충족(X)만 부적격. '확인필요(?)'는 판정을 막지 않고 별도 안내로 뺀다.
     statuses = {i.status for i in items}
     verdict = "부적격" if "X" in statuses else "적격"
