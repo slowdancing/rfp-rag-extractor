@@ -95,9 +95,11 @@ def _local_has_match(llm, query: str, cand: list[dict]) -> bool:
     if not cand:
         return False
     titles = "\n".join(f"- {c.get('title') or c.get('doc_id')}" for c in cand[:10])
-    sys = ("사용자 요구에 실제로 부합하는 공고가 후보에 하나라도 있으면 YES, "
-           "전혀 없으면 NO. 오직 YES 또는 NO만 출력.")
-    user = f"[사용자 요구]\n{query}\n\n[후보 공고]\n{titles}\n\nYES 또는 NO:"
+    sys = ("후보 공고 중 사용자 요청과 분야·주제가 **조금이라도 관련된** 게 하나라도 있으면 YES, "
+           "요청과 **완전히 다른 분야**여서 후보가 전부 무관할 때만 NO. 오직 YES 또는 NO만 출력.\n"
+           "예: 요청 '웹사이트 설계'와 후보 '홈페이지 구축·개편'은 관련 → YES.\n"
+           "예: 요청 '자전거 구매 보조'와 후보 '정보시스템 구축'은 무관 → NO.")
+    user = f"[사용자 요청]\n{query}\n\n[후보 공고]\n{titles}\n\nYES 또는 NO:"
     try:
         ans = llm.generate(sys, user).strip().upper()
         return not ans.startswith("N")
