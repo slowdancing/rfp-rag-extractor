@@ -286,13 +286,47 @@ def _summary_rows(text: str) -> list[SummaryRow]:
     return rows
 
 
+def _merge_meta_rows(doc_id: str, rows: list[SummaryRow]) -> list[SummaryRow]:
+    """핵심 항목(사업명·발주기관·예산·마감일)은 카탈로그 메타데이터로 확정 채움.
+
+    긴 문서에서 사업개요 청크가 검색에 안 잡혀 LLM이 놓쳐도, 이 필드는 항상 정확.
+    항상 10개 항목을 반환(1행 폴백 방지) → 화면이 줄글로 새지 않음.
+    """
+    from src.catalog import get_doc
+    from src.rag import prompts
+
+    cur = {r.label: r.value for r in rows}
+    meta = get_doc(doc_id) or {}
+
+    def _budget(b):
+        try:
+            return f"{int(b):,}원"
+        except (TypeError, ValueError):
+            return None
+
+    meta_map = {
+        "사업명": meta.get("title"),
+        "발주기관": meta.get("org"),
+        "사업 예산": _budget(meta.get("budget")),
+        "입찰 마감일": meta.get("deadline"),
+    }
+    out = []
+    for f in prompts.SUMMARY_FIELDS:
+        v = meta_map.get(f) or cur.get(f)          # 메타 우선, 없으면 LLM 값
+        if not v or v == "명시되지 않음":
+            v = "명시되지 않음"
+        out.append(SummaryRow(label=f, value=str(v)))
+    return out
+
+
 @app.post("/summarize", response_model=SummaryResponse)
 def summarize(req: SummaryRequest) -> SummaryResponse:
     try:
         ans = get_pipeline().summarize(req.doc_id, structured=True)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    rows = _merge_meta_rows(req.doc_id, _summary_rows(ans.answer))
     return SummaryResponse(
-        doc_id=req.doc_id, summary=ans.answer, rows=_summary_rows(ans.answer),
+        doc_id=req.doc_id, summary=ans.answer, rows=rows,
         sources=_to_source_items(ans),
     )
