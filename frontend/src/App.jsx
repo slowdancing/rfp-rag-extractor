@@ -9,7 +9,7 @@ const STATUS_ICON = { O: "✅", X: "❌", "?": "⚠️" };
 
 // 적격성 판정도 적합도와 같은 체스 등급 배지로 통일
 const VERDICT_GRADE = {
-  "적격": { sym: "!!", cls: "g-brilliant" },
+  "적격": { sym: "★", cls: "g-best" },       // 형식상 적격(통과) — '완벽'이 아님
   "확인필요": { sym: "?!", cls: "g-inacc" },
   "부적격": { sym: "??", cls: "g-blunder" },
 };
