@@ -130,7 +130,7 @@ export default function App() {
             placeholder="예) 공공기관 대상 전자조달·학사정보시스템 구축 경험이 많은 SI 기업. 클라우드 마이그레이션 강점."
           />
           <button className="btn btn-ai-solid" onClick={recommend} disabled={loading}>
-            {loading && mode === "맞춤 추천" ? "AI가 찾는 중…" : "✨ AI로 추천받기"}
+            {loading && mode === "맞춤 추천" ? (<><span className="spinner" /> AI가 찾는 중…</>) : "✨ AI로 추천받기"}
           </button>
         </div>
       </section>
@@ -205,10 +205,10 @@ export default function App() {
 
                 <div className="card-actions">
                   <button className="btn btn-ai" onClick={() => summarize(it.doc_id)} disabled={summaries[it.doc_id]?.loading}>
-                    {summaries[it.doc_id]?.loading ? "요약 중…" : "✨ AI 요약"}
+                    {summaries[it.doc_id]?.loading ? (<><span className="spinner" /> 요약 중…</>) : "✨ AI 요약"}
                   </button>
                   <button className="btn btn-ai" onClick={() => checkEligibility(it.doc_id)} disabled={elig[it.doc_id]?.loading}>
-                    {elig[it.doc_id]?.loading ? "판정 중…" : "⚖️ 적격성 판정"}
+                    {elig[it.doc_id]?.loading ? (<><span className="spinner" /> 판정 중…</>) : "⚖️ 적격성 판정"}
                   </button>
                 </div>
 
