@@ -8,6 +8,27 @@ const won = (n) => (n == null ? "-" : n.toLocaleString("ko-KR") + "원");
 const VERDICT_CLASS = { "적격": "v-ok", "부적격": "v-no", "확인필요": "v-maybe" };
 const STATUS_ICON = { O: "✅", X: "❌", "?": "⚠️" };
 
+// 관련도(코사인)를 체스닷컴 스타일 등급으로 매핑
+function fitGrade(score) {
+  const s = Math.max(0, score);
+  if (s >= 0.65) return { sym: "!!", label: "완벽 적합", cls: "g-brilliant" };
+  if (s >= 0.57) return { sym: "!", label: "매우 적합", cls: "g-great" };
+  if (s >= 0.50) return { sym: "★", label: "적합", cls: "g-best" };
+  if (s >= 0.43) return { sym: "✓", label: "무난", cls: "g-good" };
+  if (s >= 0.36) return { sym: "?!", label: "약한 관련", cls: "g-inacc" };
+  if (s >= 0.28) return { sym: "?", label: "관련 낮음", cls: "g-mistake" };
+  return { sym: "??", label: "부적합", cls: "g-blunder" };
+}
+
+function FitBadge({ score }) {
+  const g = fitGrade(score);
+  return (
+    <span className={"grade " + g.cls} title={`관련도 ${Math.round(Math.max(0, score) * 100)}%`}>
+      <b>{g.sym}</b> {g.label}
+    </span>
+  );
+}
+
 export default function App() {
   const [profile, setProfile] = useState("");
   const [q, setQ] = useState("");
@@ -187,9 +208,7 @@ export default function App() {
                   <h4 className="card-title">{it.title || it.doc_id}</h4>
                   <div className="badges">
                     {it.source && <span className="badge badge-src">🌐 {it.source}</span>}
-                    {it.score != null && (
-                      <span className="badge badge-score">관련도 {Math.round(Math.max(0, it.score) * 100)}%</span>
-                    )}
+                    {it.score != null && <FitBadge score={it.score} />}
                   </div>
                 </div>
 

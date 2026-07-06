@@ -124,8 +124,18 @@ body { background: var(--bg); color: var(--ink); }
 .card-title { margin: 0; font-size: 15.5px; font-weight: 660; line-height: 1.45; letter-spacing: -.2px; }
 .badges { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 .badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
-.badge-score { background: var(--accent-tint); color: var(--accent-ink); border: 1px solid var(--accent-line); }
 .badge-src { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-line); }
+
+/* ── 체스닷컴 스타일 적합도 등급 배지 ── */
+.grade { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; color: #fff; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.grade b { font-size: 13px; line-height: 1; }
+.g-brilliant { background: #26c2a3; }  /* Brilliant !! */
+.g-great     { background: #749bbf; }  /* Great !      */
+.g-best      { background: #81b64c; }  /* Best ★       */
+.g-good      { background: #95af8b; }  /* Good ✓       */
+.g-inacc     { background: #f7c631; color: #4a3a00; }  /* Inaccuracy ?! */
+.g-mistake   { background: #e58f2a; }  /* Mistake ?    */
+.g-blunder   { background: #ca3431; }  /* Blunder ??   */
 
 .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0; color: var(--ink-2); font-size: 12.5px; }
 .snippet { margin: 8px 0; color: var(--muted); font-size: 12.5px; line-height: 1.65; }
