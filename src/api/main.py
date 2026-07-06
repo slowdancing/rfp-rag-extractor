@@ -238,29 +238,50 @@ def ask(req: AskRequest) -> AskResponse:
 
 
 def _summary_rows(text: str) -> list[SummaryRow]:
-    """LLM이 낸 JSON 요약을 고정 스키마 순서의 표 행으로 변환.
+    """LLM 요약을 고정 스키마 순서의 표 행으로 변환.
 
-    JSON 파싱 실패 시엔 원문을 한 행('요약')으로 폴백해 화면이 비지 않게 한다.
+    '항목명: 값' 줄 형식을 우선 파싱하고, 평평한 JSON도 함께 흡수한다(모델이 형식을
+    벗어나도 최대한 매핑). 하나도 못 채우면 원문을 한 행으로 폴백해 화면이 비지 않게 한다.
     """
     import json
     import re
 
     from src.rag import prompts
 
+    def _nk(k: str) -> str:  # 공백 제거 정규화(띄어쓰기 흔들림 대응)
+        return str(k).replace(" ", "").strip()
+
+    found: dict[str, str] = {}
+
+    # 1) 평평한 JSON이면 문자열 값만 수집
     m = re.search(r"\{.*\}", text, re.DOTALL)
-    data = {}
     if m:
         try:
             data = json.loads(m.group())
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if isinstance(v, (str, int, float)):
+                        found.setdefault(_nk(k), str(v))
         except Exception:  # noqa: BLE001
-            data = {}
-    if not isinstance(data, dict) or not data:
-        return [SummaryRow(label="요약", value=text.strip())]
+            pass
+
+    # 2) '항목명: 값' 줄 수집(중첩JSON/줄글 대응, 첫 콜론 기준)
+    for line in text.splitlines():
+        if ":" in line:
+            k, _, v = line.partition(":")
+            k = k.strip().strip('"').lstrip("-•*·").strip()
+            v = v.strip().strip('",').strip()
+            if k and v and v != '""':
+                found.setdefault(_nk(k), v)
+
     rows = []
     for f in prompts.SUMMARY_FIELDS:
-        v = data.get(f)
-        v = str(v).strip() if v not in (None, "", []) else "명시되지 않음"
+        v = found.get(_nk(f))
+        v = v if v else "명시되지 않음"
         rows.append(SummaryRow(label=f, value=v))
+
+    if all(r.value == "명시되지 않음" for r in rows):
+        return [SummaryRow(label="요약", value=text.strip()[:1500])]
     return rows
 
 
