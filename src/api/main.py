@@ -140,15 +140,17 @@ def recommend(req: RecommendRequest) -> DocumentList:
         org=req.org, deadline_before=req.deadline_before,
     )
 
-    # 3-1) 로컬에 적합 공고가 없으면 → 나라장터 실시간 검색으로 폴백 (옵트인)
+    # 3-1) 관련성 게이트: 로컬 후보가 요구에 실제로 부합하는지 LLM으로 판정
+    #      부합 없으면 → 나라장터 폴백(키 있을 때) 또는 "적합 공고 없음"(빈 목록).
     settings = get_settings()
-    if settings.nara_fallback and settings.nara_api_key and \
-            not _local_has_match(pipe._llm, req.profile, cand):
-        from src.nara import search_bids
-        ext = search_bids(search_q or req.profile, settings.nara_api_key,
-                          days=settings.nara_search_days, rows=req.top_k)
-        if ext:
-            return DocumentList(total=len(ext), items=[DocumentItem(**e) for e in ext])
+    if cand and not _local_has_match(pipe._llm, req.profile, cand):
+        if settings.nara_fallback and settings.nara_api_key:
+            from src.nara import search_bids
+            ext = search_bids(search_q or req.profile, settings.nara_api_key,
+                              days=settings.nara_search_days, rows=req.top_k)
+            if ext:
+                return DocumentList(total=len(ext), items=[DocumentItem(**e) for e in ext])
+        return DocumentList(total=0, items=[])  # 적합한 공고 없음
 
     # 4) LLM 재랭킹(요구·조건 반영) 또는 점수순
     if req.rerank and cand:
@@ -163,7 +165,9 @@ def recommend(req: RecommendRequest) -> DocumentList:
 
 
 def _company_text(req: EligibilityRequest) -> str:
-    """회사 프로필 필드를 LLM 프롬프트용 텍스트로."""
+    """회사 프로필을 LLM 프롬프트용 텍스트로. 자연어(company)가 있으면 우선 사용."""
+    if req.company and req.company.strip():
+        return req.company.strip()
     parts = [
         f"- 기업규모: {req.company_size}" if req.company_size else "",
         f"- 업종/주력분야: {req.industry}" if req.industry else "",

@@ -70,6 +70,8 @@ class RecommendRequest(BaseModel):
 # ===== 적격성 판정 =====
 class EligibilityRequest(BaseModel):
     doc_id: str = Field(..., description="판정할 문서 ID")
+    company: str | None = Field(None, description="회사 소개 자연어(예: 서울 소재 중소기업, SI 전문…). 있으면 이걸 우선 사용")
+    # (선택) 구조화 입력 — company 가 없을 때만 사용
     company_size: str | None = Field(None, description="기업규모(중소기업/중견기업/대기업)")
     industry: str | None = Field(None, description="업종/주력분야")
     region: str | None = Field(None, description="본사 소재지(지역)")

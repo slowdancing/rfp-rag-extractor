@@ -20,7 +20,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("");
   const [summaries, setSummaries] = useState({}); // doc_id -> {loading, text}
-  const [company, setCompany] = useState({ size: "", industry: "", region: "", record: "", certs: "" });
+  const [company, setCompany] = useState(""); // 회사 소개(자연어)
   const [elig, setElig] = useState({}); // doc_id -> {loading, verdict, summary, items}
 
   async function recommend() {
@@ -77,14 +77,7 @@ export default function App() {
       const r = await fetch(`${API}/eligibility`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          doc_id: docId,
-          company_size: company.size || null,
-          industry: company.industry || null,
-          region: company.region || null,
-          track_record: company.record || null,
-          certifications: company.certs || null,
-        }),
+        body: JSON.stringify({ doc_id: docId, company: company || null }),
       });
       const j = await r.json();
       setElig((s) => ({ ...s, [docId]: { loading: false, ...j } }));
@@ -126,19 +119,13 @@ export default function App() {
           <button onClick={listDocs}>필터로 목록 보기</button>
 
           <h3 style={{ marginTop: 20 }}>🏢 회사 프로필</h3>
-          <p className="muted" style={{ margin: "0 0 8px" }}>적격성 판정에 사용됩니다.</p>
-          <label>기업규모
-            <select value={company.size} onChange={(e) => setCompany({ ...company, size: e.target.value })}>
-              <option value="">선택</option>
-              <option>중소기업</option>
-              <option>중견기업</option>
-              <option>대기업</option>
-            </select>
-          </label>
-          <label>업종/주력분야<input value={company.industry} onChange={(e) => setCompany({ ...company, industry: e.target.value })} placeholder="예: 소프트웨어 개발, SI" /></label>
-          <label>소재지<input value={company.region} onChange={(e) => setCompany({ ...company, region: e.target.value })} placeholder="예: 서울" /></label>
-          <label>보유 실적/역량<textarea value={company.record} onChange={(e) => setCompany({ ...company, record: e.target.value })} placeholder="예: 대학 학사시스템 구축 3건, 공공 전자조달 경험" /></label>
-          <label>보유 인증/자격<input value={company.certs} onChange={(e) => setCompany({ ...company, certs: e.target.value })} placeholder="예: GS인증 1등급, 직접생산증명" /></label>
+          <p className="muted" style={{ margin: "0 0 8px" }}>적격성 판정에 사용. 자연어로 자유롭게 적으세요.</p>
+          <textarea
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            placeholder="예) 서울 소재 중소기업. 공공 SI·대학 학사시스템 구축 3건, GS인증 1등급 보유. 컨소시엄 가능."
+            style={{ minHeight: 90 }}
+          />
         </aside>
 
         <main>
@@ -223,7 +210,13 @@ export default function App() {
               </li>
             ))}
           </ul>
-          {!loading && mode && items.length === 0 && <p className="muted">결과가 없습니다.</p>}
+          {!loading && mode && items.length === 0 && (
+            <p className="muted">
+              {mode === "맞춤 추천"
+                ? "조건에 맞는 적합한 공고를 찾지 못했어요. (질문을 바꾸거나 나라장터 연동을 켜보세요)"
+                : "결과가 없습니다."}
+            </p>
+          )}
         </main>
       </div>
     </div>
