@@ -269,6 +269,7 @@ def _summary_rows(text: str) -> list[SummaryRow]:
     for line in text.splitlines():
         if ":" in line:
             k, _, v = line.partition(":")
+            k = re.sub(r"^\s*\d+[.)]\s*", "", k)      # "1. " 번호 제거
             k = k.strip().strip('"').lstrip("-•*·").strip()
             v = v.strip().strip('",').strip()
             if k and v and v != '""':
