@@ -5,8 +5,19 @@ const API = import.meta.env.VITE_API || "http://localhost:8000";
 
 const won = (n) => (n == null ? "-" : n.toLocaleString("ko-KR") + "원");
 
-const VERDICT_CLASS = { "적격": "v-ok", "부적격": "v-no", "확인필요": "v-maybe" };
 const STATUS_ICON = { O: "✅", X: "❌", "?": "⚠️" };
+
+// 적격성 판정도 적합도와 같은 체스 등급 배지로 통일
+const VERDICT_GRADE = {
+  "적격": { sym: "!!", cls: "g-brilliant" },
+  "확인필요": { sym: "?!", cls: "g-inacc" },
+  "부적격": { sym: "??", cls: "g-blunder" },
+};
+
+function VerdictBadge({ verdict }) {
+  const g = VERDICT_GRADE[verdict] || { sym: "?", cls: "g-mistake" };
+  return <span className={"grade " + g.cls}><b>{g.sym}</b> {verdict}</span>;
+}
 
 // 관련도(코사인)를 체스닷컴 스타일 등급으로 매핑
 function fitGrade(score) {
@@ -247,8 +258,9 @@ export default function App() {
 
                 {elig[it.doc_id]?.items && (
                   <div className="elig">
-                    <div className={"elig-verdict " + (VERDICT_CLASS[elig[it.doc_id].verdict] || "")}>
-                      <b>{elig[it.doc_id].verdict}</b> — {elig[it.doc_id].summary}
+                    <div className="elig-verdict">
+                      <VerdictBadge verdict={elig[it.doc_id].verdict} />
+                      <span className="ev-summary">{elig[it.doc_id].summary}</span>
                     </div>
                     {elig[it.doc_id].items.length > 0 && (
                       <table className="kv-table elig-table">
