@@ -125,4 +125,5 @@ data/ results/ docs/ notebooks/ tests/
 
 ## 🗒️ 협업일지
 
-일자별 개발 협업일지(노션): **[열기](https://app.notion.com/p/38345e309755802b8911f6cd786b4866)**
+일자별 개발 협업일지
+김건오 : **[열기](https://app.notion.com/p/38345e309755802b8911f6cd786b4866)**
