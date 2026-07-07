@@ -183,15 +183,20 @@ class RAGPipeline:
         return RAGAnswer(answer=answer, sources=chunks)
 
     # ---------- 적격성 판정 ----------
-    def assess_eligibility(self, doc_id: str, company: str, max_chunks: int = 12) -> RAGAnswer:
-        """문서의 입찰참가자격을 회사 정보와 대조해 판정(JSON). 자격 관련 청크 위주로 수집."""
+    def assess_eligibility(
+        self, doc_id: str, company: str, max_chunks: int = 12, llm=None
+    ) -> RAGAnswer:
+        """문서의 입찰참가자격을 회사 정보와 대조해 판정. 자격 관련 청크 위주로 수집.
+
+        llm 을 주면 그 모델로 판정(적격성만 gpt-5-mini 라우팅 등). 없으면 기본 LLM.
+        """
         chunks = self._store.query(
             self._embedder.embed_query("입찰 참가자격 자격요건 제한 실적 면허 인증 지역 대기업 컨소시엄"),
             top_k=max_chunks,
             where={"doc_id": doc_id},
         )
         context = self._format_context(chunks)
-        answer = self._llm.generate(
+        answer = (llm or self._llm).generate(
             prompts.ELIGIBILITY_SYSTEM_PROMPT,
             prompts.build_eligibility_user_prompt(context, company),
         )

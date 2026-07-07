@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     nara_api_key: str = ""               # data.go.kr 서비스키(디코딩 키 권장)
     nara_search_days: int = 30           # 최근 N일 공고 검색
 
+    # 적격성 판정 전용 LLM(옵트인) — EXAONE 7.8B는 근거기반 자격판정에서 환각이 잦아,
+    # 키가 있으면 이 과제만 gpt-5-mini(공식 OpenAI)로 라우팅. 비우면 기본 LLM(EXAONE) 사용.
+    eligibility_openai_key: str = ""     # 공식 OpenAI 키(비면 폴백)
+    eligibility_openai_model: str = "gpt-5-mini"
+
     # Paths
     data_raw_dir: str = "./data/raw"
     data_metadata_dir: str = "./data/metadata"

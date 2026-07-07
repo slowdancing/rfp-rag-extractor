@@ -52,6 +52,26 @@ def get_pipeline():
     return _pipeline
 
 
+# 적격성 판정용 LLM(옵트인). 키가 있으면 gpt-5-mini(공식 OpenAI)로, 없으면 None→기본 EXAONE.
+_elig_llm = False  # 미초기화 표식(None 은 '폴백'이라는 유효값이라 구분)
+
+
+def get_eligibility_llm():
+    global _elig_llm
+    if _elig_llm is False:
+        s = get_settings()
+        if s.eligibility_openai_key:
+            from src.llm.openai_llm import OpenAILLM
+
+            _elig_llm = OpenAILLM(
+                api_key=s.eligibility_openai_key,
+                model=s.eligibility_openai_model,  # base_url 없음 → 공식 OpenAI
+            )
+        else:
+            _elig_llm = None
+    return _elig_llm
+
+
 def _to_source_items(ans: RAGAnswer) -> list[SourceItem]:
     return [
         SourceItem(
@@ -188,7 +208,7 @@ def _detect_status(seg: str):
         return "X"
     if "?" in seg or "확인" in seg or "불가" in seg or "⚠" in seg or "미상" in seg:
         return "?"
-    if "O" in s or "충족" in seg or "✅" in seg or "가능" in seg or "적격" in seg:
+    if "O" in s or "충족" in seg or "✅" in seg or "가능" in seg or "적격" in seg or "적합" in seg:
         return "O"
     return None
 
@@ -233,6 +253,30 @@ def _parse_eligibility(text: str) -> tuple[str, str, list[EligibilityItem]]:
         reason = others[1] if len(others) > 1 else ""
         if req and req not in ("요건", "판정", "사유"):
             items.append(EligibilityItem(requirement=req[:140], status=st, reason=reason[:220]))
+
+    # 폴백: 줄 형식 실패 시 마크다운 블록('- 판정: .. / - 요건: .. / - 사유: ..') 파싱
+    if not items:
+        cur: dict = {}
+        def _flush():
+            if cur.get("req"):
+                items.append(EligibilityItem(
+                    requirement=cur["req"][:140], status=cur.get("st") or "?",
+                    reason=cur.get("reason", "")[:220]))
+        for line in text.splitlines():
+            l = line.strip().lstrip("#-*• ").strip()
+            low = l.replace("*", "")
+            if low.startswith("판정") and ":" in low:
+                _flush(); cur = {"st": _detect_status(low.split(":", 1)[1]) or "?"}
+            elif low.startswith("요건") and ":" in low:
+                cur["req"] = low.split(":", 1)[1].strip()
+            elif low.startswith("사유") and ":" in low:
+                cur["reason"] = low.split(":", 1)[1].strip()
+        _flush()
+        # 일반론('기술적/조직적/재무적 요건' 등 지어낸 것)만 있으면 신뢰 불가로 간주해 비움
+        generic = all(any(g in i.requirement for g in ("기술적", "조직적", "재무적", "일반")) for i in items) if items else False
+        if generic:
+            items = []
+
     if not items:
         return ("확인필요",
                 "자격 요건을 자동으로 추출하지 못했어요. 원문을 확인하거나 추가 정보로 재판정하세요.",
@@ -246,7 +290,9 @@ def _parse_eligibility(text: str) -> tuple[str, str, list[EligibilityItem]]:
 def eligibility(req: EligibilityRequest) -> EligibilityResponse:
     """RFP 입찰참가자격 vs 우리 회사 프로필 대조 → 적격/부적격/확인필요 + 항목별 근거."""
     try:
-        ans = get_pipeline().assess_eligibility(req.doc_id, _company_text(req))
+        ans = get_pipeline().assess_eligibility(
+            req.doc_id, _company_text(req), llm=get_eligibility_llm()
+        )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     verdict, summary, items = _parse_eligibility(ans.answer)
