@@ -1,9 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 
 const API = import.meta.env.VITE_API || "http://localhost:8000";
 
 const won = (n) => (n == null ? "-" : n.toLocaleString("ko-KR") + "원");
+
+// ── 임시저장 → 엑셀(CSV) 내보내기용 항목 정의 [표시명, 문서→값] ──
+const EXPORT_FIELDS = [
+  ["사업명", (d) => d.title || d.doc_id],
+  ["발주기관", (d) => d.org || ""],
+  ["예산(원)", (d) => (d.budget ?? "")],
+  ["마감일", (d) => d.deadline || ""],
+  ["게시일", (d) => d.posted || ""],
+  ["문서유형", (d) => d.filetype || ""],
+  ["요약", (d) => d.summary || ""],
+  ["출처", (d) => d.source || "로컬DB"],
+  ["문서ID", (d) => d.doc_id],
+  ["링크", (d) => d.link || ""],
+];
+const DEFAULT_FIELDS = ["사업명", "발주기관", "예산(원)", "마감일"];
+
+// 문서 카드에서 임시저장함에 담을 스냅샷(검색 결과가 바뀌어도 유지되게 값 복사)
+const snapshot = (it) => ({
+  doc_id: it.doc_id, title: it.title, org: it.org, budget: it.budget,
+  deadline: it.deadline, posted: it.posted, filetype: it.filetype,
+  summary: it.summary, link: it.link, source: it.source,
+});
+
+// CSV 셀 이스케이프(콤마·따옴표·개행 포함 시 큰따옴표로 감쌈)
+const csvCell = (v) => {
+  const s = String(v ?? "");
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+};
 
 const STATUS_ICON = { O: "✅", X: "❌", "?": "⚠️" };
 
@@ -101,6 +129,63 @@ export default function App() {
   const [company, setCompany] = useState("");
   const [elig, setElig] = useState({});
   const [eligMore, setEligMore] = useState({}); // doc_id -> 2차 추가 정보
+  // 임시저장함: { [doc_id]: { doc: 스냅샷, fields: [담을 항목명] } }. 새로고침해도 유지.
+  const [saved, setSaved] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("rfp_saved") || "{}"); } catch { return {}; }
+  });
+  const [cartOpen, setCartOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("rfp_saved", JSON.stringify(saved));
+  }, [saved]);
+
+  const savedCount = Object.keys(saved).length;
+
+  function toggleSave(it) {
+    setSaved((s) => {
+      const next = { ...s };
+      if (next[it.doc_id]) delete next[it.doc_id];
+      else next[it.doc_id] = { doc: snapshot(it), fields: [...DEFAULT_FIELDS] };
+      return next;
+    });
+  }
+
+  function toggleField(docId, name) {
+    setSaved((s) => {
+      const entry = s[docId];
+      if (!entry) return s;
+      const has = entry.fields.includes(name);
+      const fields = has ? entry.fields.filter((f) => f !== name) : [...entry.fields, name];
+      return { ...s, [docId]: { ...entry, fields } };
+    });
+  }
+
+  function removeSaved(docId) {
+    setSaved((s) => { const n = { ...s }; delete n[docId]; return n; });
+  }
+
+  function clearCart() {
+    if (savedCount && confirm("임시저장함을 전부 비울까요?")) setSaved({});
+  }
+
+  function exportCSV() {
+    const rows = Object.values(saved);
+    if (rows.length === 0) return alert("임시저장된 문서가 없습니다.");
+    // 컬럼 = 어느 문서든 선택된 항목의 합집합(정의 순서 유지)
+    const cols = EXPORT_FIELDS.filter(([name]) => rows.some((r) => r.fields.includes(name)));
+    if (cols.length === 0) return alert("내보낼 항목이 하나도 선택되지 않았습니다.");
+    const header = cols.map(([name]) => csvCell(name)).join(",");
+    const body = rows
+      .map((r) => cols.map(([name, get]) => (r.fields.includes(name) ? csvCell(get(r.doc)) : "")).join(","))
+      .join("\r\n");
+    const csv = "﻿" + header + "\r\n" + body; // BOM: 엑셀 한글 깨짐 방지
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `임시저장_RFP_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function recommend() {
     if (!profile.trim()) return alert("고객사 역량/관심 분야를 입력하세요.");
@@ -192,6 +277,9 @@ export default function App() {
             <p>RFP 추천 · 요약 · 적격성 판정</p>
           </div>
         </div>
+        <button className="btn btn-cart" onClick={() => setCartOpen(true)}>
+          🗂 임시저장함{savedCount > 0 && <span className="cart-badge">{savedCount}</span>}
+        </button>
       </header>
 
       {/* ── AI 추천 (LLM이 의미를 이해해 검색) ── */}
@@ -288,7 +376,31 @@ export default function App() {
                   <button className="btn btn-ai" onClick={() => checkEligibility(it.doc_id)} disabled={elig[it.doc_id]?.loading}>
                     {elig[it.doc_id]?.loading ? (<><span className="spinner" /> 판정 중…</>) : "⚖️ 적격성 판정"}
                   </button>
+                  <button
+                    className={"btn " + (saved[it.doc_id] ? "btn-saved" : "btn-save")}
+                    onClick={() => toggleSave(it)}
+                  >
+                    {saved[it.doc_id] ? "⭐ 저장됨" : "☆ 임시저장"}
+                  </button>
                 </div>
+
+                {saved[it.doc_id] && (
+                  <div className="save-fields">
+                    <span className="sf-label">📊 엑셀에 담을 항목</span>
+                    <div className="sf-checks">
+                      {EXPORT_FIELDS.map(([name]) => (
+                        <label key={name} className="sf-check">
+                          <input
+                            type="checkbox"
+                            checked={saved[it.doc_id].fields.includes(name)}
+                            onChange={() => toggleField(it.doc_id, name)}
+                          />
+                          {name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {summaries[it.doc_id]?.rows?.length > 0 ? (
                   <table className="kv-table">
@@ -328,6 +440,40 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {cartOpen && (
+        <div className="modal-backdrop" onClick={() => setCartOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>🗂 임시저장함 <span className="mh-count">{savedCount}건</span></h3>
+              <button className="modal-x" onClick={() => setCartOpen(false)}>✕</button>
+            </div>
+            {savedCount === 0 ? (
+              <p className="cart-empty">아직 담긴 문서가 없어요.<br />문서 카드의 <b>☆ 임시저장</b>을 눌러 담고, 담을 항목을 체크하세요.</p>
+            ) : (
+              <>
+                <ul className="cart-list">
+                  {Object.values(saved).map((r) => (
+                    <li key={r.doc.doc_id} className="cart-item">
+                      <div className="ci-main">
+                        <div className="ci-title">{r.doc.title || r.doc.doc_id}</div>
+                        <div className="ci-fields">
+                          {r.fields.length ? r.fields.join(" · ") : <span className="ci-none">담긴 항목 없음 — 카드에서 체크하세요</span>}
+                        </div>
+                      </div>
+                      <button className="ci-del" onClick={() => removeSaved(r.doc.doc_id)} title="삭제">✕</button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="cart-actions">
+                  <button className="btn btn-plainline" onClick={clearCart}>전체 비우기</button>
+                  <button className="btn btn-ai-solid" onClick={exportCSV}>⬇ 엑셀(CSV)로 저장</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
