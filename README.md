@@ -14,6 +14,21 @@
 
 ---
 
+## 🖥️ 실행 화면
+
+<table>
+  <tr>
+    <td align="center"><b>초기 실행 화면</b></td>
+    <td align="center"><b>AI 요약 결과 (10항목 표)</b></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/7b029396-6cde-4a9c-ade1-d695fd77b258" width="440"></td>
+    <td><img src="https://github.com/user-attachments/assets/416ebeb6-2168-416a-a944-73c86984786f" width="440"></td>
+  </tr>
+</table>
+
+---
+
 ## 핵심 기능
 
 - **맞춤 추천** — 고객사 역량(자연어)으로 적합 RFP 추천. 로컬에 없으면 **나라장터 실시간 검색**(옵트인).
