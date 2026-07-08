@@ -1,4 +1,5 @@
 
+
 # 입찰메이트 RFP RAG Extractor
 
 복잡한 정부·기업 **제안요청서(RFP)** 에서 핵심을 **추출·요약·질의응답**하고, 고객사에 맞는 공고를
@@ -19,8 +20,8 @@
     <td align="center"><b>AI 요약 결과 (10항목 표)</b></td>
   </tr>
   <tr>
-    <td><img src="https://github.com/user-attachments/assets/7b029396-6cde-4a9c-ade1-d695fd77b258" width="440"></td>
-    <td><img src="https://github.com/user-attachments/assets/416ebeb6-2168-416a-a944-73c86984786f" width="440"></td>
+    <td><img width="1054" height="783" alt="초기 실행화면" src="https://github.com/user-attachments/assets/5617f8af-4c47-4913-b2ac-c8cecaac8c35" /></td>
+    <td><img width="1076" height="827" alt="요약본 자료" src="https://github.com/user-attachments/assets/abd46ed1-07c4-4110-b86b-f7f9425bf2ad" /></td>
   </tr>
 </table>
 
