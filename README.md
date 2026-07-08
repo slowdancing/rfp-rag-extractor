@@ -144,3 +144,4 @@ data/ results/ docs/ notebooks/ tests/
 
 일자별 개발 협업일지
 김건오 : **[열기](https://app.notion.com/p/38345e309755802b8911f6cd786b4866)**
+하태진 : **[열기]([https://app.notion.com/p/38345e309755802b8911f6cd786b4866](https://excessive-delphinium-9d2.notion.site/AI-3972deb5db81808284b3f94f34009c52?source=copy_link))**
