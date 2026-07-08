@@ -7,8 +7,7 @@
 > B2G 입찰지원 컨설팅 '입찰메이트' 컨설턴트가, 나라장터에 쏟아지는 수십 페이지 RFP를
 > 일일이 읽지 않고 **요구조건·발주기관·예산·자격**을 빠르게 파악하도록 돕는다.
 >
-> <img width="1135" height="938" alt="진짜쓸자료 자료2랑같이" src="https://github.com/user-attachments/assets/7b029396-6cde-4a9c-ade1-d695fd77b258" />
-<img width="917" height="950" alt="자료2" src="https://github.com/user-attachments/assets/416ebeb6-2168-416a-a944-73c86984786f" />
+> <img width="500" height="500" alt="진짜쓸자료 자료2랑같이" src="https://github.com/user-attachments/assets/7b029396-6cde-4a9c-ade1-d695fd77b258" /><img width="500" height="500" alt="자료2" src="https://github.com/user-attachments/assets/416ebeb6-2168-416a-a944-73c86984786f" />
 
 
 > 📄 **[개발 보고서 (PDF) 다운로드](docs/개발보고서.pdf)** — 전체 개발 과정 · 실험 결과 · 트러블슈팅 · 의사결정을 한눈에 종합.
